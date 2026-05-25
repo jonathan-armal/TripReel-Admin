@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Clock,
@@ -8,8 +8,12 @@ import {
   ArrowRight,
   RefreshCw,
   Plane,
+  Upload,
+  ExternalLink,
+  AlertCircle,
 } from "lucide-react";
 import { useOperatorAuth } from "../../context/OperatorAuthContext";
+import { operatorAuthAPI } from "../../services/api";
 
 const STATE_CONFIG = {
   DRAFT: {
@@ -74,6 +78,43 @@ const STATE_CONFIG = {
   },
 };
 
+const DOCUMENT_LABELS = {
+  gstCertificate: "GST Registration Certificate",
+  pan: "PAN Card",
+  incorporationCertificate: "Certificate of Incorporation",
+  bankProof: "Bank Account Proof",
+  tan: "TAN Certificate",
+  industryAssociationCertificate: "Industry Association Certificate",
+  liabilityInsuranceCertificate: "Liability Insurance Certificate",
+  authorizedSignatoryIdProof: "Authorized Signatory ID Proof",
+  tourismTravelLicense: "Tourism / Travel License",
+  officeAddressProof: "Office Address Proof",
+  companyLogo: "Company Logo",
+  coverBanner: "Cover Banner",
+};
+
+const DOC_STATUS_LABELS = {
+  PENDING: "Pending",
+  APPROVED: "Approved",
+  REJECTED: "Rejected",
+  REUPLOAD_REQUIRED: "Re-upload required",
+};
+
+const DOC_STATUS_COLORS = {
+  PENDING: "bg-amber-50 text-amber-700 border-amber-200",
+  APPROVED: "bg-green-50 text-green-700 border-green-200",
+  REJECTED: "bg-red-50 text-red-700 border-red-200",
+  REUPLOAD_REQUIRED: "bg-orange-50 text-orange-700 border-orange-200",
+};
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const ALLOWED_TYPES = [
+  "application/pdf",
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+];
+
 function StateBadge({ state }) {
   const cfg = STATE_CONFIG[state] || STATE_CONFIG.DRAFT;
   return (
@@ -100,6 +141,9 @@ export default function OperatorStatus() {
   const { operator, operatorLoading, refreshOperator, logout } =
     useOperatorAuth();
   const navigate = useNavigate();
+  const [reuploadLoadingKey, setReuploadLoadingKey] = useState("");
+  const [reuploadProgress, setReuploadProgress] = useState({});
+  const [reuploadError, setReuploadError] = useState({});
 
   const doRefresh = useCallback(() => {
     refreshOperator();
@@ -133,6 +177,58 @@ export default function OperatorStatus() {
   const state = operator.onboardingState;
   const history = [...(operator.transitionHistory || [])].reverse();
   const latestNote = history[0]?.note;
+  const documents = operator.documents || {};
+  const documentStatus = operator.documentStatus || {};
+  const documentRows = Object.keys(DOCUMENT_LABELS).filter(
+    (k) => documents[k] || documentStatus[k]?.status
+  );
+
+  const handleReupload = async (key, file) => {
+    if (!file) return;
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setReuploadError((prev) => ({
+        ...prev,
+        [key]: "Only PDF, JPEG, JPG, or PNG files are allowed.",
+      }));
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      setReuploadError((prev) => ({
+        ...prev,
+        [key]: "File must not exceed 5 MB.",
+      }));
+      return;
+    }
+
+    setReuploadError((prev) => ({ ...prev, [key]: "" }));
+    setReuploadLoadingKey(key);
+    setReuploadProgress((prev) => ({ ...prev, [key]: 0 }));
+
+    const formData = new FormData();
+    formData.append("key", key);
+    formData.append("file", file);
+
+    try {
+      await operatorAuthAPI.reuploadDocument(formData, {
+        onUploadProgress: (evt) => {
+          const total = evt.total || 0;
+          if (total <= 0) return;
+          const pct = Math.round((evt.loaded / total) * 100);
+          setReuploadProgress((prev) => ({ ...prev, [key]: pct }));
+        },
+      });
+      await refreshOperator();
+    } catch (err) {
+      setReuploadError((prev) => ({
+        ...prev,
+        [key]:
+          err.response?.data?.message ||
+          "Re-upload failed. Please try again.",
+      }));
+    } finally {
+      setReuploadLoadingKey("");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
@@ -272,6 +368,125 @@ export default function OperatorStatus() {
         </div>
 
         {/* Transition History */}
+        {documentRows.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <div>
+                <h2 className="text-base font-semibold text-gray-800">
+                  Document Verification
+                </h2>
+                <p className="text-sm text-gray-500">
+                  Track per-document approval and re-upload requests.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {documentRows.map((key) => {
+                const status = documentStatus[key]?.status || "PENDING";
+                const remark = documentStatus[key]?.remark || "";
+                const updatedAt = documentStatus[key]?.updatedAt;
+                const url = documents[key];
+                const isReupload = status === "REUPLOAD_REQUIRED";
+                const isUploading = reuploadLoadingKey === key;
+                const progress = reuploadProgress[key] || 0;
+                const rowErr = reuploadError[key];
+
+                return (
+                  <div
+                    key={key}
+                    className="rounded-xl border border-gray-100 bg-gray-50 p-4"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-900">
+                          {DOCUMENT_LABELS[key]}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-2 mt-2">
+                          <span
+                            className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${
+                              DOC_STATUS_COLORS[status] ||
+                              "bg-gray-100 text-gray-700 border-gray-200"
+                            }`}
+                          >
+                            {DOC_STATUS_LABELS[status] || status}
+                          </span>
+                          {updatedAt && (
+                            <span className="text-xs text-gray-400">
+                              Updated: {formatDate(updatedAt)}
+                            </span>
+                          )}
+                          {url && (
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 text-xs font-medium text-teal-600 hover:text-teal-700"
+                            >
+                              View
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+                        </div>
+                        {remark && (
+                          <p className="mt-2 text-sm text-gray-600">
+                            Remark:{" "}
+                            <span className="font-medium text-gray-700">
+                              {remark}
+                            </span>
+                          </p>
+                        )}
+                      </div>
+
+                      {isReupload && (
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm font-medium text-gray-700 cursor-pointer hover:border-teal-300">
+                            <Upload className="w-4 h-4 text-teal-600" />
+                            {isUploading ? "Uploading…" : "Re-upload"}
+                            <input
+                              type="file"
+                              accept=".pdf,.jpg,.jpeg,.png"
+                              disabled={isUploading}
+                              onChange={(e) => {
+                                const f = e.target.files?.[0];
+                                e.target.value = "";
+                                handleReupload(key, f);
+                              }}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                      )}
+                    </div>
+
+                    {isUploading && (
+                      <div className="mt-3">
+                        <div className="flex items-center justify-between text-xs text-gray-500">
+                          <span>Upload progress</span>
+                          <span>{progress}%</span>
+                        </div>
+                        <div className="mt-1 w-full h-2 rounded-full bg-white border border-gray-200 overflow-hidden">
+                          <div
+                            className="h-full bg-teal-500 transition-all"
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {rowErr && (
+                      <p className="mt-3 text-xs text-red-500 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        {rowErr}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {history.length > 0 && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <h2 className="text-base font-semibold text-gray-800 mb-4">

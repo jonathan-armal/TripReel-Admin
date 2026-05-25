@@ -12,8 +12,11 @@ import Dashboard from "./pages/Dashboard";
 import Banners from "./pages/Banners";
 import Categories from "./pages/Categories";
 import Packages from "./pages/Packages";
+import Templates from "./pages/Templates";
+import Listings from "./pages/Listings";
 import Wishlists from "./pages/Wishlists";
 import MyTrips from "./pages/MyTrips";
+import Bookings from "./pages/Bookings";
 import UserList from "./pages/UserList";
 import Reels from "./pages/Reels";
 import Operators from "./pages/Operators";
@@ -26,6 +29,7 @@ import OperatorOnboarding from "./pages/operator/Onboarding";
 import OperatorStatus from "./pages/operator/Status";
 import OperatorDashboard from "./pages/operator/Dashboard";
 import OperatorPackages from "./pages/operator/Packages";
+import OperatorListings from "./pages/operator/Listings";
 
 // ── Spinner helper ────────────────────────────────────────────────────────────
 function Spinner() {
@@ -120,15 +124,17 @@ function App() {
             <Route path="/operator/login"    element={<OperatorLogin />} />
             <Route path="/operator/register" element={<OperatorRegister />} />
 
-            {/* ── Operator standalone pages (no sidebar) ── */}
+            {/* ── Operator pages (with OperatorSidebar) ── */}
             <Route path="/operator/onboarding" element={
-              <OperatorRoute><OperatorOnboarding /></OperatorRoute>
+              <OperatorRoute>
+                <OperatorLayout><OperatorOnboarding /></OperatorLayout>
+              </OperatorRoute>
             } />
             <Route path="/operator/status" element={
-              <OperatorRoute><OperatorStatus /></OperatorRoute>
+              <OperatorRoute>
+                <OperatorLayout><OperatorStatus /></OperatorLayout>
+              </OperatorRoute>
             } />
-
-            {/* ── Operator dashboard pages (with OperatorSidebar) ── */}
             <Route path="/operator/dashboard" element={
               <OperatorRoute>
                 <OperatorLayout><OperatorDashboard /></OperatorLayout>
@@ -137,6 +143,11 @@ function App() {
             <Route path="/operator/packages" element={
               <OperatorRoute>
                 <OperatorLayout><OperatorPackages /></OperatorLayout>
+              </OperatorRoute>
+            } />
+            <Route path="/operator/listings" element={
+              <OperatorRoute>
+                <OperatorLayout><OperatorListings /></OperatorLayout>
               </OperatorRoute>
             } />
 
@@ -150,8 +161,11 @@ function App() {
                     <Route path="/banners"       element={<Banners />} />
                     <Route path="/categories"    element={<Categories />} />
                     <Route path="/packages"      element={<Packages />} />
+                    <Route path="/templates"     element={<Templates />} />
+                    <Route path="/listings"      element={<Listings />} />
                     <Route path="/reels"         element={<Reels />} />
                     <Route path="/wishlists"     element={<Wishlists />} />
+                    <Route path="/bookings"      element={<Bookings />} />
                     <Route path="/my-trips"      element={<MyTrips />} />
                     <Route path="/users"         element={<UserList />} />
                     <Route path="/operators"     element={<Operators />} />

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Search,
@@ -18,17 +18,21 @@ import {
 import { adminPackagesAPI, categoriesAPI } from "../services/api";
 
 const STATUS_LABELS = {
+  DRAFT: "Draft",
   PENDING: "Pending Review",
   NEEDS_REVISION: "Needs Revision",
-  APPROVED: "Approved",
+  APPROVED: "Published",
   REJECTED: "Rejected",
+  EXPIRED: "Expired",
 };
 
 const STATUS_COLORS = {
+  DRAFT: "bg-slate-100 text-slate-700",
   PENDING: "bg-yellow-100 text-yellow-700",
   NEEDS_REVISION: "bg-orange-100 text-orange-700",
   APPROVED: "bg-green-100 text-green-700",
   REJECTED: "bg-red-100 text-red-700",
+  EXPIRED: "bg-gray-100 text-gray-700",
 };
 
 function StatusBadge({ status }) {
@@ -58,6 +62,9 @@ function ReviewModal({ pkg, categories, onClose, onReviewed }) {
   const [approvedCategory, setApprovedCategory] = useState(
     pkg.approvedCategory || pkg.category || ""
   );
+  const [isFeatured, setIsFeatured] = useState(Boolean(pkg.isFeatured));
+  const [isTrending, setIsTrending] = useState(Boolean(pkg.isTrending));
+  const [badge, setBadge] = useState(pkg.badge || "Popular");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -79,6 +86,9 @@ function ReviewModal({ pkg, categories, onClose, onReviewed }) {
         action,
         adminNotes: adminNotes.trim(),
         approvedCategory: action === "approve" ? approvedCategory : undefined,
+        isFeatured: action === "approve" ? isFeatured : undefined,
+        isTrending: action === "approve" ? isTrending : undefined,
+        badge: action === "approve" ? badge : undefined,
       });
       onReviewed(res.data.package);
       onClose();
@@ -146,6 +156,26 @@ function ReviewModal({ pkg, categories, onClose, onReviewed }) {
               </div>
             ))}
           </div>
+
+          {(pkg.destination || pkg.departureCity || (pkg.categories || []).length > 0) && (
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              {[
+                ["Destination", pkg.destination || pkg.location || "—"],
+                ["Departure City", pkg.departureCity || "—"],
+              ].map(([label, value]) => (
+                <div key={label} className="bg-gray-50 rounded-xl p-3">
+                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">{label}</p>
+                  <p className="font-medium text-gray-800">{value}</p>
+                </div>
+              ))}
+              <div className="col-span-2 bg-gray-50 rounded-xl p-3">
+                <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Package Categories</p>
+                <p className="font-medium text-gray-800">
+                  {(pkg.categories || []).filter(Boolean).join(", ") || "—"}
+                </p>
+              </div>
+            </div>
+          )}
 
           {pkg.description && (
             <div>
@@ -219,6 +249,31 @@ function ReviewModal({ pkg, categories, onClose, onReviewed }) {
             <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
               <p className="text-xs font-semibold text-amber-700 mb-1">Previous Admin Note</p>
               <p className="text-sm text-amber-800">{pkg.adminNotes}</p>
+            </div>
+          )}
+
+          {action === "approve" && (
+            <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+              <p className="text-sm font-semibold text-gray-800 mb-3">Publish Options</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Badge</label>
+                  <select value={badge} onChange={(e) => setBadge(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-teal-400">
+                    <option value="Popular">Popular</option>
+                    <option value="Trending">Trending</option>
+                    <option value="New">New</option>
+                    <option value="">None</option>
+                  </select>
+                </div>
+                <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm cursor-pointer">
+                  <input type="checkbox" checked={isFeatured} onChange={(e) => setIsFeatured(e.target.checked)} className="accent-teal-600" />
+                  Featured
+                </label>
+                <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm cursor-pointer">
+                  <input type="checkbox" checked={isTrending} onChange={(e) => setIsTrending(e.target.checked)} className="accent-teal-600" />
+                  Trending
+                </label>
+              </div>
             </div>
           )}
 
@@ -401,7 +456,7 @@ export default function PackageReview() {
   useEffect(() => {
     const fetchCounts = async () => {
       try {
-        const statuses = ["PENDING", "NEEDS_REVISION", "APPROVED", "REJECTED"];
+        const statuses = ["PENDING", "NEEDS_REVISION", "APPROVED", "REJECTED", "DRAFT", "EXPIRED"];
         const results = await Promise.all(
           statuses.map((s) => adminPackagesAPI.getAll({ status: s, limit: 1 }))
         );
@@ -432,8 +487,10 @@ export default function PackageReview() {
           { value: "all", label: "All" },
           { value: "PENDING", label: "Pending" },
           { value: "NEEDS_REVISION", label: "Needs Revision" },
-          { value: "APPROVED", label: "Approved" },
+          { value: "APPROVED", label: "Published" },
           { value: "REJECTED", label: "Rejected" },
+          { value: "DRAFT", label: "Draft" },
+          { value: "EXPIRED", label: "Expired" },
         ].map(({ value, label }) => (
           <button
             key={value}

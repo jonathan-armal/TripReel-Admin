@@ -12,6 +12,9 @@ import {
   Tag,
   Video,
   Building2,
+  Layers,
+  ClipboardList,
+  Receipt,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
@@ -33,12 +36,15 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "banners", label: "Banners", icon: Image },
     { id: "categories", label: "Categories", icon: Tag },
+    { id: "templates", label: "Templates", icon: Layers },
+    { id: "listings", label: "Listings", icon: ClipboardList },
     { id: "packages", label: "Package Review", icon: Package },
     { id: "reels", label: "Reels", icon: Video },
   ];
 
   const bottomMenuItems = [
     { id: "wishlists", label: "Wishlists", icon: Heart },
+    { id: "bookings", label: "Bookings", icon: Receipt },
     { id: "my-trips", label: "My Trips", icon: Briefcase },
     { id: "users", label: "User List", icon: Users },
     { id: "operators", label: "Operators", icon: Building2 },

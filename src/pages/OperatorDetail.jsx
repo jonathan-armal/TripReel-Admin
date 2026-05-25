@@ -73,6 +73,25 @@ const DOCUMENT_LABELS = {
   tan: "TAN Certificate",
   industryAssociationCertificate: "Industry Association Certificate",
   liabilityInsuranceCertificate: "Liability Insurance Certificate",
+  authorizedSignatoryIdProof: "Authorized Signatory ID Proof",
+  tourismTravelLicense: "Tourism / Travel License",
+  officeAddressProof: "Office Address Proof",
+  companyLogo: "Company Logo",
+  coverBanner: "Cover Banner",
+};
+
+const DOC_STATUS_LABELS = {
+  PENDING: "Pending",
+  APPROVED: "Approved",
+  REJECTED: "Rejected",
+  REUPLOAD_REQUIRED: "Re-upload",
+};
+
+const DOC_STATUS_COLORS = {
+  PENDING: "bg-amber-50 text-amber-700 border-amber-200",
+  APPROVED: "bg-green-50 text-green-700 border-green-200",
+  REJECTED: "bg-red-50 text-red-700 border-red-200",
+  REUPLOAD_REQUIRED: "bg-orange-50 text-orange-700 border-orange-200",
 };
 
 // Quick-action definitions: shown as prominent buttons based on current state
@@ -269,6 +288,8 @@ export default function OperatorDetail() {
   const [advancedState, setAdvancedState] = useState("");
   const [advancedNote, setAdvancedNote] = useState("");
   const [advancedLoading, setAdvancedLoading] = useState(false);
+  const [docRemark, setDocRemark] = useState("");
+  const [docActionLoading, setDocActionLoading] = useState(null); // `${key}:${status}`
 
   useEffect(() => {
     (async () => {
@@ -308,6 +329,31 @@ export default function OperatorDetail() {
       );
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const doDocStatus = async (key, status) => {
+    setActionError("");
+    setActionSuccess("");
+    const remark = docRemark.trim();
+    if ((status === "REJECTED" || status === "REUPLOAD_REQUIRED") && remark.length < 5) {
+      setActionError("Please enter a remark (min 5 characters).");
+      return;
+    }
+    setDocActionLoading(`${key}:${status}`);
+    try {
+      const res = await adminOperatorsAPI.updateDocumentStatus(id, {
+        key,
+        status,
+        remark,
+      });
+      setOperator(res.data.operator);
+      setDocRemark("");
+      setActionSuccess("Document status updated.");
+    } catch (err) {
+      setActionError(err.response?.data?.message || "Failed to update document status.");
+    } finally {
+      setDocActionLoading(null);
     }
   };
 
@@ -513,12 +559,55 @@ export default function OperatorDetail() {
           <InfoRow label="PAN" value={operator.pan} />
           <InfoRow label="TAN" value={operator.tan} />
           <InfoRow label="Bank Account" value={operator.bankAccountNumber} />
+          <InfoRow label="Years of Experience" value={operator.yearsOfExperience ?? "—"} />
+          <InfoRow label="Tours Conducted" value={operator.toursConducted ?? "—"} />
+          <InfoRow
+            label="Tour Types"
+            value={(operator.tourTypes || []).filter(Boolean).join(", ") || "—"}
+          />
           <div className="sm:col-span-2">
             <InfoRow
               label="Registered Address"
               value={operator.registeredAddress}
             />
           </div>
+          <div className="sm:col-span-2">
+            <InfoRow label="Office Address" value={operator.officeAddress} />
+          </div>
+          <div className="sm:col-span-2">
+            <InfoRow
+              label="Business Information"
+              value={operator.businessInfo || "—"}
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <InfoRow
+              label="Regions Operated"
+              value={(operator.regionsOperated || []).filter(Boolean).join(", ")}
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <InfoRow
+              label="Services Offered"
+              value={(operator.servicesOffered || []).filter(Boolean).join(", ")}
+            />
+          </div>
+          <InfoRow
+            label="Tourism License Expiry"
+            value={
+              operator.tourismTravelLicenseExpiry
+                ? new Date(operator.tourismTravelLicenseExpiry).toLocaleDateString("en-IN")
+                : "—"
+            }
+          />
+          <InfoRow
+            label="Liability Insurance Expiry"
+            value={
+              operator.liabilityInsuranceExpiry
+                ? new Date(operator.liabilityInsuranceExpiry).toLocaleDateString("en-IN")
+                : "—"
+            }
+          />
         </div>
       </div>
 
@@ -530,42 +619,97 @@ export default function OperatorDetail() {
             {docsUploaded}/{totalDocs} uploaded
           </span>
         </div>
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            Document Remark (for reject / re-upload)
+          </label>
+          <input
+            value={docRemark}
+            onChange={(e) => setDocRemark(e.target.value)}
+            placeholder="e.g. PAN image is unclear. Please re-upload."
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+          />
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {Object.entries(DOCUMENT_LABELS).map(([key, label]) => {
             const path = operator.documents?.[key];
+            const st = operator.documentStatus?.[key]?.status || (path ? "PENDING" : "PENDING");
+            const stLabel = DOC_STATUS_LABELS[st] || st;
+            const stColor = DOC_STATUS_COLORS[st] || "bg-gray-50 text-gray-700 border-gray-200";
             return (
               <div
                 key={key}
-                className={`flex items-center justify-between gap-3 p-3 rounded-xl border ${
+                className={`p-3 rounded-xl border ${
                   path
                     ? "border-teal-200 bg-teal-50"
                     : "border-red-100 bg-red-50"
                 }`}
               >
-                <div className="flex items-center gap-2 min-w-0">
-                  <FileText
-                    className={`w-4 h-4 flex-shrink-0 ${
-                      path ? "text-teal-500" : "text-red-400"
-                    }`}
-                  />
-                  <span className="text-sm text-gray-700 truncate">
-                    {label}
-                  </span>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <FileText
+                      className={`w-4 h-4 flex-shrink-0 ${
+                        path ? "text-teal-500" : "text-red-400"
+                      }`}
+                    />
+                    <div className="min-w-0">
+                      <span className="text-sm text-gray-700 truncate block">
+                        {label}
+                      </span>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border mt-1 ${stColor}`}>
+                        {stLabel}
+                      </span>
+                      {operator.documentStatus?.[key]?.remark && (
+                        <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                          {operator.documentStatus[key].remark}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {path ? (
+                      <a
+                        href={path}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-xs text-teal-600 hover:text-teal-700 font-medium"
+                      >
+                        View
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    ) : (
+                      <span className="text-xs text-red-400">Missing</span>
+                    )}
+                  </div>
                 </div>
-                {path ? (
-                  <a
-                    href={path}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-xs text-teal-600 hover:text-teal-700 font-medium flex-shrink-0"
-                  >
-                    View
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                ) : (
-                  <span className="text-xs text-red-400 flex-shrink-0">
-                    Missing
-                  </span>
+
+                {path && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => doDocStatus(key, "APPROVED")}
+                      disabled={docActionLoading === `${key}:APPROVED`}
+                      className="px-3 py-1.5 text-xs font-medium rounded-lg bg-green-500 hover:bg-green-600 text-white disabled:opacity-50"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => doDocStatus(key, "REUPLOAD_REQUIRED")}
+                      disabled={docActionLoading === `${key}:REUPLOAD_REQUIRED`}
+                      className="px-3 py-1.5 text-xs font-medium rounded-lg bg-orange-500 hover:bg-orange-600 text-white disabled:opacity-50"
+                    >
+                      Ask Re-upload
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => doDocStatus(key, "REJECTED")}
+                      disabled={docActionLoading === `${key}:REJECTED`}
+                      className="px-3 py-1.5 text-xs font-medium rounded-lg bg-red-500 hover:bg-red-600 text-white disabled:opacity-50"
+                    >
+                      Reject
+                    </button>
+                  </div>
                 )}
               </div>
             );

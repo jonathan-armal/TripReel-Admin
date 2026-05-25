@@ -75,6 +75,21 @@ export const packagesAPI = {
     delete: (id) => api.delete(`/packages/${id}`),
 }
 
+// ── Templates (Layer A) ───────────────────────────────────────────────────────
+export const templatesAPI = {
+    getAll: (params) => api.get('/templates', { params }),
+    getById: (id) => api.get(`/templates/${id}`),
+    create: (data) => api.post('/templates', data),
+    update: (id, data) => api.put(`/templates/${id}`, data),
+    delete: (id) => api.delete(`/templates/${id}`),
+}
+
+// ── Listings (Layer B) ────────────────────────────────────────────────────────
+export const listingsAPI = {
+    getAll: (params) => api.get('/listings', { params }),
+    getById: (id) => api.get(`/listings/${id}`),
+}
+
 // ── Popular Destinations ──────────────────────────────────────────────────────
 export const destinationsAPI = {
     getAll: (params) => api.get('/popular-destinations', { params }),
@@ -101,6 +116,13 @@ export const tripsAPI = {
     create: (data) => api.post('/trips', data),
     updateStatus: (id, status) => api.patch(`/trips/${id}/status`, { status }),
     delete: (id) => api.delete(`/trips/${id}`),
+}
+
+// ── Bookings (Layer C) ────────────────────────────────────────────────────────
+export const bookingsAPI = {
+    getAll: (params) => api.get('/bookings', { params }),
+    getById: (id) => api.get(`/bookings/${id}`),
+    updateStatus: (id, status) => api.patch(`/bookings/${id}/status`, { status }),
 }
 
 // ── Wishlists ─────────────────────────────────────────────────────────────────
@@ -142,8 +164,13 @@ export const operatorAuthAPI = {
     register: (data) => operatorApi.post('/operators/auth/register', data),
     login: (data) => operatorApi.post('/operators/auth/login', data),
     getMe: () => operatorApi.get('/operators/auth/me'),
-    submitOnboarding: (formData) => operatorApi.post('/operators/onboarding', formData, {
+    submitOnboarding: (formData, config = {}) => operatorApi.post('/operators/onboarding', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        ...config,
+    }),
+    reuploadDocument: (formData, config = {}) => operatorApi.patch('/operators/documents/reupload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        ...config,
     }),
 }
 
@@ -151,6 +178,7 @@ export const adminOperatorsAPI = {
     getAll: (params) => api.get('/operators', { params }),
     getById: (id) => api.get(`/operators/${id}`),
     transitionState: (id, data) => api.patch(`/operators/${id}/state`, data),
+    updateDocumentStatus: (id, data) => api.patch(`/operators/${id}/document-status`, data),
 }
 
 // ── Admin Package Review API ──────────────────────────────────────────────────
@@ -159,6 +187,12 @@ export const adminPackagesAPI = {
     review: (id, data) => api.patch(`/packages/${id}/review`, data),
     delete: (id) => api.delete(`/packages/${id}`),
     getById: (id) => api.get(`/packages/${id}`),
+}
+
+export const adminListingsAPI = {
+    getAll: (params) => api.get('/listings/admin/all', { params }),
+    review: (id, data) => api.patch(`/listings/${id}/review`, data),
+    getById: (id) => api.get(`/listings/${id}`),
 }
 
 // ── Operator Package API ──────────────────────────────────────────────────────
@@ -171,4 +205,16 @@ export const operatorPackagesAPI = {
         headers: { 'Content-Type': 'multipart/form-data' },
     }),
     delete: (id) => operatorApi.delete(`/packages/operator/${id}`),
+}
+
+export const operatorTemplatesAPI = {
+    getAll: (params) => operatorApi.get('/templates', { params }),
+    getById: (id) => operatorApi.get(`/templates/${id}`),
+}
+
+export const operatorListingsAPI = {
+    getMine: () => operatorApi.get('/listings/operator/mine'),
+    create: (data) => operatorApi.post('/listings/operator', data),
+    update: (id, data) => operatorApi.put(`/listings/operator/${id}`, data),
+    delete: (id) => operatorApi.delete(`/listings/operator/${id}`),
 }

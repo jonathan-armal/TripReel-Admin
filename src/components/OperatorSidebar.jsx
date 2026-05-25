@@ -12,6 +12,7 @@ import { useOperatorAuth } from "../context/OperatorAuthContext";
 
 const menuItems = [
   { id: "operator/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { id: "operator/listings", label: "My Listings", icon: ClipboardList },
   { id: "operator/packages", label: "My Packages", icon: Package },
   { id: "operator/status", label: "Application Status", icon: ClipboardList },
 ];
