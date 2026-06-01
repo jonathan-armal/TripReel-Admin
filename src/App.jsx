@@ -23,7 +23,6 @@ import Operators from "./pages/Operators";
 import OperatorDetail from "./pages/OperatorDetail";
 
 // ── Operator pages ────────────────────────────────────────────────────────────
-import OperatorLogin from "./pages/operator/Login";
 import OperatorRegister from "./pages/operator/Register";
 import OperatorOnboarding from "./pages/operator/Onboarding";
 import OperatorStatus from "./pages/operator/Status";
@@ -117,11 +116,13 @@ function App() {
         <OperatorAuthProvider>
           <Routes>
 
-            {/* ── Admin login (public) ── */}
+            {/* ── Unified login (public) ── */}
             <Route path="/login" element={<Login />} />
 
-            {/* ── Operator auth (public) ── */}
-            <Route path="/operator/login"    element={<OperatorLogin />} />
+            {/* ── Operator login redirects to unified login ── */}
+            <Route path="/operator/login" element={<Navigate to="/login" replace />} />
+
+            {/* ── Operator register (public) ── */}
             <Route path="/operator/register" element={<OperatorRegister />} />
 
             {/* ── Operator pages (with OperatorSidebar) ── */}

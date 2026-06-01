@@ -11,11 +11,25 @@ import {
   User,
   ClipboardList,
   LayoutDashboard,
-  ArrowLeft,
-  ArrowRight,
 } from "lucide-react";
 import { useOperatorAuth } from "../../context/OperatorAuthContext";
 import { operatorAuthAPI } from "../../services/api";
+
+const DOCUMENT_FIELDS = [
+  { key: "gstCertificate", label: "GST Registration Certificate" },
+  { key: "pan", label: "PAN Card" },
+  { key: "incorporationCertificate", label: "Certificate of Incorporation" },
+  { key: "bankProof", label: "Bank Account Proof (Cancelled Cheque)" },
+  { key: "tan", label: "TAN Certificate" },
+  {
+    key: "industryAssociationCertificate",
+    label: "Industry Association Certificate",
+  },
+  {
+    key: "liabilityInsuranceCertificate",
+    label: "Liability Insurance Certificate",
+  },
+];
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const ALLOWED_TYPES = [
@@ -175,15 +189,8 @@ export default function OperatorOnboarding() {
     businessInfo: "",
     gstin: "",
     pan: "",
-    tan: "",
+    // bank details
     bankAccountNumber: "",
-    yearsOfExperience: "",
-    toursConducted: "",
-    regionsOperated: "",
-    tourTypes: [],
-    servicesOffered: [],
-    tourismTravelLicenseExpiry: "",
-    liabilityInsuranceExpiry: "",
   });
   const [files, setFiles] = useState({});
   const [fileErrors, setFileErrors] = useState({});
@@ -199,7 +206,7 @@ export default function OperatorOnboarding() {
   useEffect(() => {
     if (operatorLoading) return;
     if (!operator) {
-      navigate("/operator/login", { replace: true });
+      navigate("/login", { replace: true });
       return;
     }
     if (operator.onboardingState !== "DRAFT") {
@@ -378,28 +385,16 @@ export default function OperatorOnboarding() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    for (let i = 0; i < STEP_CONFIG.length; i += 1) {
-      if (!validateStep(i)) {
-        setStepIndex(i);
-        setError("Please complete all required fields before submitting.");
-        return;
-      }
-    }
-
-    const hasErrors = Object.values(fileErrors).some((v) => v);
+    const hasErrors = Object.values(fileErrors).some((e) => e);
     if (hasErrors) {
       setError("Please fix errors before submitting.");
       return;
     }
+
     const formData = new FormData();
-    Object.entries(form).forEach(([k, v]) => {
-      if (Array.isArray(v)) {
-        formData.append(k, v.join(","));
-      } else {
-        formData.append(k, v);
-      }
-    });
+    Object.entries(form).forEach(([k, v]) => formData.append(k, v));
     Object.entries(files).forEach(([k, f]) => formData.append(k, f));
+
     setLoading(true);
     setUploadProgress(0);
     try {
@@ -422,486 +417,6 @@ export default function OperatorOnboarding() {
     }
   };
 
-  const renderTextField = ({
-    key,
-    label,
-    placeholder,
-    type = "text",
-    required = true,
-    full = false,
-  }) => {
-    const hasError = Boolean(fieldErrors[key]);
-    return (
-      <div key={key} className={full ? "sm:col-span-2" : ""}>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-          {label}
-        </label>
-        <input
-          type={type}
-          required={required}
-          value={form[key]}
-          onChange={(e) => {
-            const val = e.target.value;
-            setForm((prev) => ({ ...prev, [key]: val }));
-            setFieldErrors((prev) => ({ ...prev, [key]: "" }));
-          }}
-          placeholder={placeholder}
-          className={`w-full px-4 py-2.5 border rounded-xl text-sm outline-none focus:ring-2 transition-all ${
-            hasError
-              ? "border-red-300 focus:ring-red-200 focus:border-red-400"
-              : "border-gray-300 focus:ring-teal-500 focus:border-teal-500"
-          }`}
-        />
-        {hasError && (
-          <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
-            <AlertCircle className="w-3 h-3" />
-            {fieldErrors[key]}
-          </p>
-        )}
-      </div>
-    );
-  };
-
-  const renderTextarea = ({
-    key,
-    label,
-    placeholder,
-    required = true,
-    full = true,
-  }) => {
-    const hasError = Boolean(fieldErrors[key]);
-    return (
-      <div key={key} className={full ? "sm:col-span-2" : ""}>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-          {label}
-        </label>
-        <textarea
-          required={required}
-          value={form[key]}
-          onChange={(e) => {
-            const val = e.target.value;
-            setForm((prev) => ({ ...prev, [key]: val }));
-            setFieldErrors((prev) => ({ ...prev, [key]: "" }));
-          }}
-          placeholder={placeholder}
-          rows={4}
-          className={`w-full px-4 py-2.5 border rounded-xl text-sm outline-none focus:ring-2 transition-all resize-none ${
-            hasError
-              ? "border-red-300 focus:ring-red-200 focus:border-red-400"
-              : "border-gray-300 focus:ring-teal-500 focus:border-teal-500"
-          }`}
-        />
-        {hasError && (
-          <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
-            <AlertCircle className="w-3 h-3" />
-            {fieldErrors[key]}
-          </p>
-        )}
-      </div>
-    );
-  };
-
-  const renderUpload = (key) => {
-    const cfg = DOCUMENTS[key];
-    const file = files[key];
-    const err = fileErrors[key];
-    const isDragging = dragOverKey === key;
-    const previewUrl = previews[key];
-    const kind = getFileKind(file);
-
-    return (
-      <div key={key}>
-        <div className="flex items-center justify-between gap-3 mb-1.5">
-          <label className="block text-sm font-medium text-gray-700">
-            {cfg.label}
-            {cfg.required && <span className="text-red-500"> *</span>}
-          </label>
-          {previewUrl && (
-            <button
-              type="button"
-              onClick={() => window.open(previewUrl, "_blank", "noopener,noreferrer")}
-              className="text-xs font-medium text-teal-600 hover:text-teal-700"
-            >
-              Preview
-            </button>
-          )}
-        </div>
-        <div
-          onDragEnter={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setDragOverKey(key);
-          }}
-          onDragOver={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setDragOverKey(key);
-          }}
-          onDragLeave={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setDragOverKey("");
-          }}
-          onDrop={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setDragOverKey("");
-            const dropped = e.dataTransfer?.files?.[0];
-            if (dropped) handleFileChange(key, dropped);
-          }}
-          className={`relative border-2 border-dashed rounded-xl p-4 transition-colors ${
-            file
-              ? "border-teal-400 bg-teal-50"
-              : err
-              ? "border-red-300 bg-red-50"
-              : isDragging
-              ? "border-teal-400 bg-teal-50"
-              : "border-gray-200 hover:border-teal-300"
-          }`}
-        >
-          <input
-            type="file"
-            accept={cfg.accept}
-            onChange={(e) => handleFileChange(key, e.target.files?.[0])}
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-          />
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 min-w-0">
-              {file ? (
-                <>
-                  {kind === "image" ? (
-                    <div className="w-10 h-10 rounded-lg bg-white border border-teal-100 overflow-hidden flex-shrink-0">
-                      <img
-                        src={previewUrl}
-                        alt=""
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  ) : (
-                    <CheckCircle className="w-5 h-5 text-teal-500 flex-shrink-0" />
-                  )}
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-teal-700 truncate">
-                      {file.name}
-                    </p>
-                    <p className="text-xs text-teal-500">
-                      {formatFileSize(file.size)}
-                    </p>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="w-9 h-9 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    {cfg.allowed?.every((t) => t.startsWith("image/")) ? (
-                      <ImageIcon className="w-4 h-4 text-gray-400" />
-                    ) : (
-                      <FileText className="w-4 h-4 text-gray-400" />
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm text-gray-600">
-                      <span className="text-teal-600 font-medium">
-                        Click to upload
-                      </span>{" "}
-                      or drag and drop
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      {cfg.accept.replaceAll(".", "").toUpperCase()} up to 5 MB
-                    </p>
-                  </div>
-                </>
-              )}
-            </div>
-            {file && (
-              <button
-                type="button"
-                onClick={() => {
-                  setFiles((prev) => {
-                    const next = { ...prev };
-                    delete next[key];
-                    return next;
-                  });
-                  setFileErrors((prev) => ({ ...prev, [key]: "" }));
-                  setPreviews((prev) => {
-                    const next = { ...prev };
-                    const prevUrl = next[key];
-                    if (prevUrl) {
-                      try {
-                        URL.revokeObjectURL(prevUrl);
-                      } catch {
-                        null;
-                      }
-                    }
-                    delete next[key];
-                    return next;
-                  });
-                }}
-                className="text-xs font-medium text-gray-500 hover:text-red-600"
-              >
-                Remove
-              </button>
-            )}
-          </div>
-        </div>
-        {err && (
-          <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
-            <AlertCircle className="w-3 h-3" />
-            {err}
-          </p>
-        )}
-      </div>
-    );
-  };
-
-  const renderStep = () => {
-    if (stepIndex === 0) {
-      return (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <h2 className="text-base font-semibold text-gray-800 mb-5">
-            {STEP_CONFIG[0].title}
-          </h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {renderTextField({
-              key: "businessName",
-              label: "Business Name",
-              placeholder: "Acme Tours Pvt. Ltd.",
-              full: true,
-            })}
-            {renderTextField({
-              key: "registeredAddress",
-              label: "GST Registered Address",
-              placeholder: "123 MG Road, Mumbai 400001",
-              full: true,
-            })}
-            {renderTextField({
-              key: "officeAddress",
-              label: "Office Address",
-              placeholder: "Office address (if different from GST address)",
-              full: true,
-            })}
-            {renderTextField({
-              key: "gstin",
-              label: "GSTIN",
-              placeholder: "22AAAAA0000A1Z5",
-            })}
-            {renderTextField({
-              key: "pan",
-              label: "PAN Number",
-              placeholder: "AAAAA0000A",
-            })}
-            {renderTextField({
-              key: "tan",
-              label: "TAN Number",
-              placeholder: "AAAA00000A",
-            })}
-          </div>
-        </div>
-      );
-    }
-
-    if (stepIndex === 1) {
-      return (
-        <>
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-            <h2 className="text-base font-semibold text-gray-800 mb-5">
-              Bank Details
-            </h2>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {renderTextField({
-                key: "bankAccountNumber",
-                label: "Bank Account Number",
-                placeholder: "000123456789",
-                full: true,
-              })}
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-            <h2 className="text-base font-semibold text-gray-800 mb-1">
-              Legal Documents
-            </h2>
-            <p className="text-sm text-gray-500 mb-5">
-              Upload PDF or image files. Max 5 MB each.
-            </p>
-            <div className="space-y-4">
-              {[
-                "gstCertificate",
-                "pan",
-                "tan",
-                "incorporationCertificate",
-                "bankProof",
-                "authorizedSignatoryIdProof",
-                "officeAddressProof",
-              ].map(renderUpload)}
-            </div>
-          </div>
-        </>
-      );
-    }
-
-    if (stepIndex === 2) {
-      return (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <h2 className="text-base font-semibold text-gray-800 mb-1">
-            Travel Verification
-          </h2>
-          <p className="text-sm text-gray-500 mb-5">
-            These documents are required to verify your travel business.
-          </p>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-6">
-            {renderTextField({
-              key: "tourismTravelLicenseExpiry",
-              label: "Tourism/Travel License Expiry (Optional)",
-              placeholder: "",
-              type: "date",
-              required: false,
-              full: true,
-            })}
-            {renderTextField({
-              key: "liabilityInsuranceExpiry",
-              label: "Liability Insurance Expiry (Optional)",
-              placeholder: "",
-              type: "date",
-              required: false,
-              full: true,
-            })}
-          </div>
-
-          <div className="space-y-4">
-            {[
-              "tourismTravelLicense",
-              "industryAssociationCertificate",
-              "liabilityInsuranceCertificate",
-            ].map(renderUpload)}
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <>
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <h2 className="text-base font-semibold text-gray-800 mb-5">
-            Profile Details
-          </h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {renderTextarea({
-              key: "businessInfo",
-              label: "Business Information",
-              placeholder:
-                "Tell customers about your company, specialization, and what makes your tours unique.",
-              full: true,
-            })}
-            {renderTextField({
-              key: "yearsOfExperience",
-              label: "Years of Experience",
-              placeholder: "5",
-              type: "number",
-              full: false,
-            })}
-            {renderTextField({
-              key: "toursConducted",
-              label: "Number of Tours Conducted",
-              placeholder: "120",
-              type: "number",
-              full: false,
-            })}
-            {renderTextField({
-              key: "regionsOperated",
-              label: "Countries/States Operated",
-              placeholder: "India, Nepal, Dubai",
-              full: true,
-            })}
-
-            <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Tour Types <span className="text-red-500">*</span>
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {TOUR_TYPES.map((t) => (
-                  <label
-                    key={t.key}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm cursor-pointer transition-colors ${
-                      form.tourTypes.includes(t.key)
-                        ? "border-teal-400 bg-teal-50 text-teal-700"
-                        : "border-gray-200 hover:border-teal-300"
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={form.tourTypes.includes(t.key)}
-                      onChange={() => {
-                        setArrayToggle("tourTypes", t.key);
-                        setFieldErrors((prev) => ({ ...prev, tourTypes: "" }));
-                      }}
-                      className="accent-teal-600"
-                    />
-                    {t.label}
-                  </label>
-                ))}
-              </div>
-              {fieldErrors.tourTypes && (
-                <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" />
-                  {fieldErrors.tourTypes}
-                </p>
-              )}
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Services Offered <span className="text-red-500">*</span>
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {SERVICES.map((s) => (
-                  <label
-                    key={s.key}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm cursor-pointer transition-colors ${
-                      form.servicesOffered.includes(s.key)
-                        ? "border-teal-400 bg-teal-50 text-teal-700"
-                        : "border-gray-200 hover:border-teal-300"
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={form.servicesOffered.includes(s.key)}
-                      onChange={() => {
-                        setArrayToggle("servicesOffered", s.key);
-                        setFieldErrors((prev) => ({
-                          ...prev,
-                          servicesOffered: "",
-                        }));
-                      }}
-                      className="accent-teal-600"
-                    />
-                    {s.label}
-                  </label>
-                ))}
-              </div>
-              {fieldErrors.servicesOffered && (
-                <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" />
-                  {fieldErrors.servicesOffered}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <h2 className="text-base font-semibold text-gray-800 mb-1">
-            Branding (Optional)
-          </h2>
-          <p className="text-sm text-gray-500 mb-5">
-            Add a logo and cover banner to make your marketplace listing look professional.
-          </p>
-          <div className="space-y-4">{["companyLogo", "coverBanner"].map(renderUpload)}</div>
-        </div>
-      </>
-    );
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Top bar */}
@@ -922,7 +437,7 @@ export default function OperatorOnboarding() {
           <button
             onClick={() => {
               logout();
-              navigate("/operator/login", { replace: true });
+              navigate("/login", { replace: true });
             }}
             className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-red-500 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-50"
           >
@@ -937,16 +452,14 @@ export default function OperatorOnboarding() {
         <div className="flex items-center justify-center mb-8">
           {PORTAL_STEPS.map((step, i) => {
             const Icon = step.icon;
-            const isActive = i === 1; // Onboarding is step index 1
-            const isDone = i === 0; // Register is done
+            const isActive = i === 1;
+            const isDone = i === 0;
             return (
               <div key={step.label} className="flex items-center">
                 <div className="flex flex-col items-center gap-1">
                   <div
                     className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-colors ${
-                      isDone
-                        ? "bg-teal-500 border-teal-500"
-                        : isActive
+                      isDone || isActive
                         ? "bg-teal-500 border-teal-500"
                         : "bg-white border-gray-200"
                     }`}
@@ -963,7 +476,11 @@ export default function OperatorOnboarding() {
                   </div>
                   <span
                     className={`text-xs font-medium ${
-                      isActive ? "text-teal-600" : isDone ? "text-teal-500" : "text-gray-400"
+                      isActive
+                        ? "text-teal-600"
+                        : isDone
+                        ? "text-teal-500"
+                        : "text-gray-400"
                     }`}
                   >
                     {step.label}
@@ -1003,64 +520,145 @@ export default function OperatorOnboarding() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {renderStep()}
-
-          {loading && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-              <div className="flex items-center justify-between text-sm text-gray-600">
-                <span>Uploading…</span>
-                <span>{uploadProgress}%</span>
-              </div>
-              <div className="mt-2 w-full h-2 rounded-full bg-gray-100 overflow-hidden">
-                <div
-                  className="h-full bg-teal-500 transition-all"
-                  style={{ width: `${uploadProgress}%` }}
-                />
-              </div>
+          {/* Business Details */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <h2 className="text-base font-semibold text-gray-800 mb-5">
+              Business Details
+            </h2>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {[
+                {
+                  key: "businessName",
+                  label: "Business Name",
+                  placeholder: "Acme Tours Pvt. Ltd.",
+                  full: true,
+                },
+                {
+                  key: "registeredAddress",
+                  label: "Registered Address",
+                  placeholder: "123 MG Road, Mumbai 400001",
+                  full: true,
+                },
+                { key: "gstin", label: "GSTIN", placeholder: "22AAAAA0000A1Z5" },
+                { key: "pan", label: "PAN Number", placeholder: "AAAAA0000A" },
+                { key: "tan", label: "TAN Number", placeholder: "AAAA00000A" },
+                {
+                  key: "bankAccountNumber",
+                  label: "Bank Account Number",
+                  placeholder: "000123456789",
+                },
+              ].map(({ key, label, placeholder, full }) => (
+                <div key={key} className={full ? "sm:col-span-2" : ""}>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    {label}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={form[key]}
+                    onChange={(e) =>
+                      setForm({ ...form, [key]: e.target.value })
+                    }
+                    placeholder={placeholder}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all"
+                  />
+                </div>
+              ))}
             </div>
-          )}
-
-          <div className="flex items-center justify-between gap-3">
-            <button
-              type="button"
-              onClick={goBack}
-              disabled={loading || stepIndex === 0}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back
-            </button>
-
-            {stepIndex < STEP_CONFIG.length - 1 ? (
-              <button
-                type="button"
-                onClick={goNext}
-                disabled={loading}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-600 text-white font-semibold disabled:opacity-60 disabled:cursor-not-allowed shadow-md shadow-teal-500/30"
-              >
-                Next
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            ) : (
-              <button
-                type="submit"
-                disabled={loading}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-600 text-white font-semibold disabled:opacity-60 disabled:cursor-not-allowed shadow-md shadow-teal-500/30"
-              >
-                {loading ? (
-                  <>
-                    <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Submitting...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="w-5 h-5" />
-                    Submit Application
-                  </>
-                )}
-              </button>
-            )}
           </div>
+
+          {/* Document Uploads */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <h2 className="text-base font-semibold text-gray-800 mb-1">
+              Required Documents
+            </h2>
+            <p className="text-sm text-gray-500 mb-5">
+              Upload PDF, JPEG, JPG, or PNG. Max 5 MB each.
+            </p>
+            <div className="space-y-4">
+              {DOCUMENT_FIELDS.map(({ key, label }) => (
+                <div key={key}>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    {label}
+                  </label>
+                  <div
+                    className={`relative border-2 border-dashed rounded-xl p-4 transition-colors ${
+                      files[key]
+                        ? "border-teal-400 bg-teal-50"
+                        : fileErrors[key]
+                        ? "border-red-300 bg-red-50"
+                        : "border-gray-200 hover:border-teal-300"
+                    }`}
+                  >
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) =>
+                        handleFileChange(key, e.target.files?.[0])
+                      }
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    />
+                    <div className="flex items-center gap-3">
+                      {files[key] ? (
+                        <>
+                          <CheckCircle className="w-5 h-5 text-teal-500 flex-shrink-0" />
+                          <div>
+                            <p className="text-sm font-medium text-teal-700">
+                              {files[key].name}
+                            </p>
+                            <p className="text-xs text-teal-500">
+                              {(files[key].size / 1024).toFixed(1)} KB
+                            </p>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-9 h-9 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <FileText className="w-4 h-4 text-gray-400" />
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600">
+                              <span className="text-teal-600 font-medium">
+                                Click to upload
+                              </span>{" "}
+                              or drag and drop
+                            </p>
+                            <p className="text-xs text-gray-400">
+                              PDF, JPEG, JPG, PNG up to 5 MB
+                            </p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {fileErrors[key] && (
+                    <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      {fileErrors[key]}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full flex items-center justify-center gap-2 py-3 bg-teal-500 hover:bg-teal-600 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-colors shadow-md shadow-teal-500/30"
+          >
+            {loading ? (
+              <>
+                <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Submitting...
+              </>
+            ) : (
+              <>
+                <Upload className="w-5 h-5" />
+                Submit Application
+              </>
+            )}
+          </button>
         </form>
       </div>
     </div>
