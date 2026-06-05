@@ -66,6 +66,17 @@ function CouponModal({ coupon, batches, onClose, onSaved }) {
   const set = (k, v) =>
     setForm((f) => {
       const updated = { ...f, [k]: v };
+
+      // When batch changes, auto-set validUntil to batch's bookingDeadline
+      if (k === "batchId" && v) {
+        const selectedBatch = batches.find((b) => b._id === v);
+        if (selectedBatch?.bookingDeadline) {
+          updated.validUntil = new Date(selectedBatch.bookingDeadline)
+            .toISOString()
+            .split("T")[0];
+        }
+      }
+
       // Auto-generate description based on entered values
       const parts = [];
       if (updated.type === "percentage" && updated.value) {
@@ -305,9 +316,21 @@ function CouponModal({ coupon, batches, onClose, onSaved }) {
                 type="date"
                 value={form.validUntil}
                 min={new Date().toISOString().split("T")[0]}
+                max={(() => {
+                  if (!form.batchId) return undefined;
+                  const b = batches.find((x) => x._id === form.batchId);
+                  return b?.bookingDeadline
+                    ? new Date(b.bookingDeadline).toISOString().split("T")[0]
+                    : undefined;
+                })()}
                 onChange={(e) => set("validUntil", e.target.value)}
                 className={inp}
               />
+              {form.batchId && (
+                <p className="text-xs text-gray-400 mt-1">
+                  Must be on or before booking deadline
+                </p>
+              )}
             </div>
           </div>
 
