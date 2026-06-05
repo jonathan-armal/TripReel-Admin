@@ -14,9 +14,12 @@ import { useApi } from "../hooks/useApi";
 
 function UserList() {
   const [users, setUsers] = useState([]);
+  const [total, setTotal] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [openDropdown, setOpenDropdown] = useState(null);
+  const [page, setPage] = useState(1);
+  const limit = 20;
   const { loading, run } = useApi();
 
   const fetchUsers = async () => {
@@ -24,8 +27,11 @@ function UserList() {
       const res = await usersAPI.getAll({
         search: searchTerm,
         status: statusFilter,
+        page,
+        limit,
       });
       setUsers(res.data.users || []);
+      setTotal(res.data.total || res.data.users?.length || 0);
     } catch (err) {
       console.error(err);
     }
@@ -33,7 +39,7 @@ function UserList() {
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [page, searchTerm, statusFilter]);
 
   const filteredUsers = users.filter((user) => {
     const matchesSearch =
@@ -254,6 +260,37 @@ function UserList() {
           <p className="text-gray-500 mt-1">
             Try adjusting your search or filters
           </p>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {total > limit && (
+        <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-4">
+          <p className="text-sm text-gray-500">
+            Showing {(page - 1) * limit + 1}–{Math.min(page * limit, total)} of{" "}
+            {total}
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-30 transition-colors"
+            >
+              Previous
+            </button>
+            <span className="text-sm text-gray-600 font-medium">
+              {page} / {Math.ceil(total / limit)}
+            </span>
+            <button
+              onClick={() =>
+                setPage((p) => Math.min(Math.ceil(total / limit), p + 1))
+              }
+              disabled={page >= Math.ceil(total / limit)}
+              className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-30 transition-colors"
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
     </div>

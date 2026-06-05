@@ -17,6 +17,9 @@ import {
   CalendarCheck,
   Settings,
   Wallet,
+  BarChart3,
+  AlertTriangle,
+  Percent,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
@@ -53,6 +56,9 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
     { id: "users", label: "User List", icon: Users },
     { id: "operators", label: "Operators", icon: Building2 },
     { id: "platform-settings", label: "Platform Settings", icon: Settings },
+    { id: "revenue", label: "Revenue", icon: BarChart3 },
+    { id: "cancellation-slabs", label: "Cancellation Slabs", icon: Percent },
+    { id: "reports", label: "User Reports", icon: AlertTriangle },
   ];
 
   const handleMenuClick = (id) => {

@@ -12,6 +12,10 @@ import {
   CheckCircle,
   MapPin,
   BarChart3,
+  IndianRupee,
+  UserCheck,
+  ThumbsUp,
+  AlertCircle,
 } from "lucide-react";
 import { useOperatorAuth } from "../../context/OperatorAuthContext";
 import {
@@ -69,7 +73,7 @@ export default function OperatorDashboard() {
         const [pkgRes, batchRes, bookingRes, walletRes] = await Promise.all([
           operatorPackagesAPI.getMine(),
           operatorBatchesAPI.getMine(),
-          operatorTripBookingsAPI.getMine({ limit: 5 }),
+          operatorTripBookingsAPI.getMine({ limit: 200 }),
           operatorWalletAPI.get(),
         ]);
 
@@ -81,23 +85,71 @@ export default function OperatorDashboard() {
         const now = new Date();
         const upcoming = batches
           .filter((b) => new Date(b.startDate) > now)
-          .slice(0, 3);
+          .slice(0, 5);
+
+        // Calculate total travelers served from all confirmed/completed bookings
+        const allBookings = bookingRes.data.bookings || [];
+        const totalTravelers = allBookings.reduce(
+          (sum, b) =>
+            b.status === "CONFIRMED" || b.status === "COMPLETED"
+              ? sum + (b.seats || 0)
+              : sum,
+          0,
+        );
+
+        // Calculate average rating across packages
+        const ratedPkgs = packages.filter((p) => p.avgRating > 0);
+        const avgRating =
+          ratedPkgs.length > 0
+            ? (
+                ratedPkgs.reduce((s, p) => s + p.avgRating, 0) /
+                ratedPkgs.length
+              ).toFixed(1)
+            : "—";
+        const totalReviews = packages.reduce(
+          (s, p) => s + (p.reviewCount || 0),
+          0,
+        );
+
+        // Revenue this month
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const thisMonthBookings = allBookings.filter(
+          (b) =>
+            new Date(b.createdAt) >= monthStart &&
+            (b.status === "CONFIRMED" || b.status === "COMPLETED"),
+        );
+        const monthRevenue = thisMonthBookings.reduce(
+          (s, b) => s + (b.pricing?.operatorAmount || 0),
+          0,
+        );
 
         setStats({
           totalPackages: packages.length,
           approvedPackages: packages.filter((p) => p.status === "APPROVED")
             .length,
+          pendingPackages: packages.filter((p) => p.status === "PENDING")
+            .length,
           totalBatches: batches.length,
           upcomingBatches: upcoming.length,
           totalBookings: bookingRes.data.total || bookings.length,
-          confirmedBookings: bookings.filter((b) => b.status === "CONFIRMED")
+          confirmedBookings: allBookings.filter((b) => b.status === "CONFIRMED")
             .length,
-          completedBookings: bookings.filter((b) => b.status === "COMPLETED")
+          completedBookings: allBookings.filter((b) => b.status === "COMPLETED")
+            .length,
+          cancelledBookings: allBookings.filter((b) => b.status === "CANCELLED")
             .length,
           walletBalance: wallet.balance || 0,
           totalEarned: wallet.totalEarned || 0,
+          totalTravelers,
+          avgRating,
+          totalReviews,
+          monthRevenue,
           recentBookings: bookings.slice(0, 5),
           upcomingBatchList: upcoming,
+          topPackages: packages
+            .filter((p) => p.status === "APPROVED")
+            .sort((a, b) => (b.bookingCount || 0) - (a.bookingCount || 0))
+            .slice(0, 5),
         });
       } catch {}
       setLoading(false);
@@ -128,13 +180,13 @@ export default function OperatorDashboard() {
         </div>
       </div>
 
-      {/* Stats grid */}
+      {/* Stats grid — Row 1: Key metrics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           {
             label: "Total Packages",
             value: stats.totalPackages,
-            sub: `${stats.approvedPackages} approved`,
+            sub: `${stats.approvedPackages} approved · ${stats.pendingPackages} pending`,
             icon: Package,
             color: "bg-blue-50 text-blue-600",
             link: "/operator/packages",
@@ -142,7 +194,7 @@ export default function OperatorDashboard() {
           {
             label: "Active Batches",
             value: stats.upcomingBatches,
-            sub: `${stats.totalBatches} total`,
+            sub: `${stats.totalBatches} total batches`,
             icon: Calendar,
             color: "bg-purple-50 text-purple-600",
             link: "/operator/batches",
@@ -150,7 +202,7 @@ export default function OperatorDashboard() {
           {
             label: "Total Bookings",
             value: stats.totalBookings,
-            sub: `${stats.confirmedBookings} confirmed`,
+            sub: `${stats.confirmedBookings} confirmed · ${stats.completedBookings} completed`,
             icon: Users,
             color: "bg-orange-50 text-orange-600",
             link: "/operator/bookings",
@@ -158,7 +210,7 @@ export default function OperatorDashboard() {
           {
             label: "Wallet Balance",
             value: fmtMoney(stats.walletBalance),
-            sub: `${fmtMoney(stats.totalEarned)} earned`,
+            sub: `${fmtMoney(stats.totalEarned)} total earned`,
             icon: Wallet,
             color: "bg-green-50 text-green-600",
             link: "/operator/wallet",
@@ -179,6 +231,52 @@ export default function OperatorDashboard() {
             <p className="text-xs text-gray-400 mt-1">{stat.sub}</p>
           </div>
         ))}
+      </div>
+
+      {/* Stats grid — Row 2: Performance metrics */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-xl border border-gray-100 p-4">
+          <div className="w-10 h-10 rounded-lg bg-yellow-50 text-yellow-600 flex items-center justify-center mb-3">
+            <Star className="w-5 h-5" />
+          </div>
+          <p className="text-2xl font-bold text-gray-800">{stats.avgRating}</p>
+          <p className="text-sm text-gray-500 mt-0.5">Avg Rating</p>
+          <p className="text-xs text-gray-400 mt-1">
+            {stats.totalReviews} reviews
+          </p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-100 p-4">
+          <div className="w-10 h-10 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center mb-3">
+            <UserCheck className="w-5 h-5" />
+          </div>
+          <p className="text-2xl font-bold text-gray-800">
+            {stats.totalTravelers}
+          </p>
+          <p className="text-sm text-gray-500 mt-0.5">Travelers Served</p>
+          <p className="text-xs text-gray-400 mt-1">
+            Total guests across trips
+          </p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-100 p-4">
+          <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">
+            <IndianRupee className="w-5 h-5" />
+          </div>
+          <p className="text-2xl font-bold text-gray-800">
+            {fmtMoney(stats.monthRevenue)}
+          </p>
+          <p className="text-sm text-gray-500 mt-0.5">This Month</p>
+          <p className="text-xs text-gray-400 mt-1">Revenue this month</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-100 p-4">
+          <div className="w-10 h-10 rounded-lg bg-red-50 text-red-500 flex items-center justify-center mb-3">
+            <AlertCircle className="w-5 h-5" />
+          </div>
+          <p className="text-2xl font-bold text-gray-800">
+            {stats.cancelledBookings}
+          </p>
+          <p className="text-sm text-gray-500 mt-0.5">Cancelled</p>
+          <p className="text-xs text-gray-400 mt-1">Cancelled bookings</p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -322,6 +420,62 @@ export default function OperatorDashboard() {
           ))}
         </div>
       </div>
+
+      {/* Top Performing Packages */}
+      {stats.topPackages?.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-100 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base font-semibold text-gray-800">
+              Top Performing Packages
+            </h2>
+            <button
+              onClick={() => navigate("/operator/packages")}
+              className="text-sm text-teal-600 hover:underline flex items-center gap-1"
+            >
+              All packages <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <div className="space-y-3">
+            {stats.topPackages.map((pkg, idx) => (
+              <div
+                key={pkg._id}
+                className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-sm font-bold text-gray-600">
+                    {idx + 1}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">
+                      {pkg.title}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {pkg.location} · {pkg.durationDays || "—"}D
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right flex items-center gap-4">
+                  <div>
+                    <p className="text-xs text-gray-400">Bookings</p>
+                    <p className="text-sm font-semibold text-gray-700">
+                      {pkg.bookingCount || 0}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400">Rating</p>
+                    <div className="flex items-center gap-1">
+                      <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
+                      <p className="text-sm font-semibold text-gray-700">
+                        {pkg.avgRating || "—"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

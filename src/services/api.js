@@ -269,6 +269,28 @@ export const cronAPI = {
   run: () => api.post("/cron/run"),
 };
 
+// Admin — Revenue Dashboard
+export const revenueAPI = {
+  getDashboard: () => api.get("/admin/revenue/dashboard"),
+  getCancellations: () => api.get("/admin/revenue/cancellations"),
+};
+
+// Admin — Reports (user issues)
+export const reportsAPI = {
+  getAll: (params) => api.get("/reports", { params }),
+  update: (id, data) => api.patch(`/reports/${id}`, data),
+};
+
+// Admin — Suspend Package
+export const adminPackageSuspendAPI = {
+  toggle: (id) => api.patch(`/packages/${id}/suspend`),
+};
+
+// Operator — Reviews for their packages
+export const operatorReviewsAPI = {
+  getMine: () => operatorApi.get("/packages/operator/reviews"),
+};
+
 // Operator — batches
 export const operatorBatchesAPI = {
   getMine: (params) => operatorApi.get("/batches/operator/mine", { params }),

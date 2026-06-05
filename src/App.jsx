@@ -27,6 +27,9 @@ import OperatorDetail from "./pages/OperatorDetail";
 import TripBookings from "./pages/TripBookings";
 import PlatformSettings from "./pages/PlatformSettings";
 import OperatorWallets from "./pages/OperatorWallets";
+import RevenueDashboard from "./pages/RevenueDashboard";
+import CancellationSlabs from "./pages/CancellationSlabs";
+import Reports from "./pages/Reports";
 
 // ── Operator pages ────────────────────────────────────────────────────────────
 import OperatorRegister from "./pages/operator/Register";
@@ -39,6 +42,7 @@ import OperatorBatches from "./pages/operator/Batches";
 import OperatorBookings from "./pages/operator/Bookings";
 import OperatorWallet from "./pages/operator/Wallet";
 import OperatorCoupons from "./pages/operator/Coupons";
+import OperatorReviews from "./pages/operator/Reviews";
 
 // ── Spinner helper ────────────────────────────────────────────────────────────
 function Spinner() {
@@ -244,6 +248,16 @@ function App() {
                 </OperatorRoute>
               }
             />
+            <Route
+              path="/operator/reviews"
+              element={
+                <OperatorRoute requireApproved>
+                  <OperatorLayout>
+                    <OperatorReviews />
+                  </OperatorLayout>
+                </OperatorRoute>
+              }
+            />
 
             {/* ── Admin pages (with AdminSidebar + Header) ── */}
             <Route
@@ -277,6 +291,12 @@ function App() {
                         path="/platform-settings"
                         element={<PlatformSettings />}
                       />
+                      <Route path="/revenue" element={<RevenueDashboard />} />
+                      <Route
+                        path="/cancellation-slabs"
+                        element={<CancellationSlabs />}
+                      />
+                      <Route path="/reports" element={<Reports />} />
                       <Route
                         path="/operator-wallets"
                         element={<OperatorWallets />}
