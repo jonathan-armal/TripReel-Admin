@@ -63,7 +63,35 @@ function CouponModal({ coupon, batches, onClose, onSaved }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const set = (k, v) =>
+    setForm((f) => {
+      const updated = { ...f, [k]: v };
+      // Auto-generate description based on entered values
+      const parts = [];
+      if (updated.type === "percentage" && updated.value) {
+        let desc = `Get ${updated.value}% off`;
+        if (updated.maxDiscount && Number(updated.maxDiscount) > 0)
+          desc += ` (max ₹${updated.maxDiscount})`;
+        parts.push(desc);
+      } else if (updated.type === "flat" && updated.value) {
+        parts.push(`Get ₹${updated.value} off`);
+      }
+      if (updated.minGuests && Number(updated.minGuests) > 0) {
+        parts.push(`for ${updated.minGuests}+ guests`);
+      }
+      if (updated.minOrderAmount && Number(updated.minOrderAmount) > 0) {
+        parts.push(`on orders above ₹${updated.minOrderAmount}`);
+      }
+      const autoDesc = parts.join(" ");
+      // Only auto-fill if description is empty or was previously auto-generated
+      if (k !== "description" && autoDesc) {
+        if (!f.description || f.description === f._prevAutoDesc) {
+          updated.description = autoDesc;
+        }
+        updated._prevAutoDesc = autoDesc;
+      }
+      return updated;
+    });
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -119,7 +147,7 @@ function CouponModal({ coupon, batches, onClose, onSaved }) {
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
           <h2 className="text-base font-bold text-gray-900">
             {coupon ? "Edit Coupon" : "Create Coupon"}
