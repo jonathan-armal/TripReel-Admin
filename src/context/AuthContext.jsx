@@ -24,10 +24,13 @@ export function AuthProvider({ children }) {
           setUser(res.data.user);
           localStorage.setItem("user", JSON.stringify(res.data.user));
         })
-        .catch(() => {
-          localStorage.removeItem("token");
-          localStorage.removeItem("user");
-          setUser(null);
+        .catch((err) => {
+          // Only clear on actual 401 (expired/invalid token)
+          if (err.response?.status === 401) {
+            localStorage.removeItem("token");
+            localStorage.removeItem("user");
+            setUser(null);
+          }
         })
         .finally(() => setLoading(false));
     } else {

@@ -1,7 +1,13 @@
 import axios from "axios";
 
+// Auto-detect: local dev uses proxy (/api), deployed uses Render backend directly
+const isLocal =
+  window.location.hostname === "localhost" ||
+  window.location.hostname === "127.0.0.1";
+const BASE_URL = isLocal ? "/api" : "https://tripreel-backend.onrender.com/api";
+
 const api = axios.create({
-  baseURL: "/api",
+  baseURL: BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
@@ -16,14 +22,18 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle 401 errors
+// Handle 401 errors — only clear admin session, not operator
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
-      window.location.href = "/login";
+      // Only redirect to login if no operator session exists either
+      const hasOperatorSession = localStorage.getItem("operatorToken");
+      if (!hasOperatorSession) {
+        window.location.href = "/login";
+      }
     }
     return Promise.reject(error);
   },
@@ -157,7 +167,7 @@ export const reelsAPI = {
 export default api;
 
 // ── Operator API ──────────────────────────────────────────────────────────────
-const operatorApi = axios.create({ baseURL: "/api" });
+const operatorApi = axios.create({ baseURL: BASE_URL });
 operatorApi.interceptors.request.use((config) => {
   const token = localStorage.getItem("operatorToken");
   if (token) config.headers.Authorization = `Bearer ${token}`;
@@ -168,6 +178,7 @@ export const operatorAuthAPI = {
   register: (data) => operatorApi.post("/operators/auth/register", data),
   login: (data) => operatorApi.post("/operators/auth/login", data),
   getMe: () => operatorApi.get("/operators/auth/me"),
+  updateProfile: (data) => operatorApi.patch("/operators/auth/profile", data),
   submitOnboarding: (formData, config = {}) =>
     operatorApi.post("/operators/onboarding", formData, {
       headers: { "Content-Type": "multipart/form-data" },
@@ -320,4 +331,9 @@ export const operatorCouponsAPI = {
   create: (data) => operatorApi.post("/coupons", data),
   update: (id, data) => operatorApi.put(`/coupons/${id}`, data),
   delete: (id) => operatorApi.delete(`/coupons/${id}`),
+};
+
+// Operator — wishlist stats (how many users wishlisted their packages)
+export const operatorWishlistAPI = {
+  getStats: () => operatorApi.get("/wishlists/operator/stats"),
 };

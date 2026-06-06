@@ -12,6 +12,8 @@ import {
   Layers,
   Tag,
   Star,
+  Heart,
+  UserCircle,
 } from "lucide-react";
 import { useOperatorAuth } from "../context/OperatorAuthContext";
 
@@ -31,6 +33,8 @@ export default function OperatorSidebar({ sidebarOpen, setSidebarOpen }) {
         { id: "operator/bookings", label: "Bookings", icon: ClipboardList },
         { id: "operator/wallet", label: "My Wallet", icon: Wallet },
         { id: "operator/reviews", label: "Reviews", icon: Star },
+        { id: "operator/wishlists", label: "Wishlists", icon: Heart },
+        { id: "operator/profile", label: "My Profile", icon: UserCircle },
         { id: "operator/listings", label: "My Listings", icon: Layers },
       ]
     : [{ id: "operator/status", label: "Application Status", icon: Clock }];

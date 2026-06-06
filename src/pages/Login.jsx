@@ -1,13 +1,28 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, Navigate } from "react-router-dom";
 import {
-  Plane, Eye, EyeOff, LogIn, Shield, Building2,
-  Mail, Lock, AlertCircle,
+  Plane,
+  Eye,
+  EyeOff,
+  LogIn,
+  Shield,
+  Building2,
+  Mail,
+  Lock,
+  AlertCircle,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useOperatorAuth } from "../context/OperatorAuthContext";
 
-function InputField({ label, icon: Icon, type = "text", value, onChange, placeholder, rightSlot }) {
+function InputField({
+  label,
+  icon: Icon,
+  type = "text",
+  value,
+  onChange,
+  placeholder,
+  rightSlot,
+}) {
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -19,7 +34,7 @@ function InputField({ label, icon: Icon, type = "text", value, onChange, placeho
           type={type}
           required
           value={value}
-          onChange={e => onChange(e.target.value)}
+          onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           className="flex-1 text-sm outline-none bg-transparent text-gray-800 placeholder-gray-400"
         />
@@ -30,8 +45,8 @@ function InputField({ label, icon: Icon, type = "text", value, onChange, placeho
 }
 
 export default function Login() {
-  const { login: adminLogin } = useAuth();
-  const { login: operatorLogin } = useOperatorAuth();
+  const { login: adminLogin, user } = useAuth();
+  const { login: operatorLogin, operator, operatorLoading } = useOperatorAuth();
   const navigate = useNavigate();
 
   const [tab, setTab] = useState("admin");
@@ -39,6 +54,20 @@ export default function Login() {
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // If already logged in, redirect immediately
+  if (user && user.role === "admin") {
+    return <Navigate to="/dashboard" replace />;
+  }
+  if (!operatorLoading && operator) {
+    if (operator.onboardingState === "APPROVED") {
+      return <Navigate to="/operator/dashboard" replace />;
+    } else if (operator.onboardingState === "DRAFT") {
+      return <Navigate to="/operator/onboarding" replace />;
+    } else {
+      return <Navigate to="/operator/status" replace />;
+    }
+  }
 
   const handleTabSwitch = (t) => {
     setTab(t);
@@ -72,7 +101,9 @@ export default function Login() {
         }
       }
     } catch (err) {
-      setError(err.response?.data?.message || "Login failed. Please try again.");
+      setError(
+        err.response?.data?.message || "Login failed. Please try again.",
+      );
     } finally {
       setLoading(false);
     }
@@ -81,7 +112,6 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0f2231] via-[#1a3347] to-[#0f2231] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-teal-500 rounded-2xl mb-4 shadow-lg shadow-teal-500/30">
@@ -95,7 +125,6 @@ export default function Login() {
 
         {/* Card */}
         <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
-
           {/* Tab switcher */}
           <div className="flex border-b border-gray-100">
             <button
@@ -141,14 +170,17 @@ export default function Login() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
-
               <InputField
                 label="Email address"
                 icon={Mail}
                 type="email"
                 value={form.email}
-                onChange={v => setForm({ ...form, email: v })}
-                placeholder={tab === "admin" ? "admin@tripreel.com" : "operator@company.com"}
+                onChange={(v) => setForm({ ...form, email: v })}
+                placeholder={
+                  tab === "admin"
+                    ? "admin@tripreel.com"
+                    : "operator@company.com"
+                }
               />
 
               <InputField
@@ -156,15 +188,19 @@ export default function Login() {
                 icon={Lock}
                 type={showPwd ? "text" : "password"}
                 value={form.password}
-                onChange={v => setForm({ ...form, password: v })}
+                onChange={(v) => setForm({ ...form, password: v })}
                 placeholder="••••••••"
                 rightSlot={
                   <button
                     type="button"
-                    onClick={() => setShowPwd(p => !p)}
+                    onClick={() => setShowPwd((p) => !p)}
                     className="text-gray-400 hover:text-gray-600 flex-shrink-0"
                   >
-                    {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showPwd ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
                   </button>
                 }
               />
@@ -188,7 +224,10 @@ export default function Login() {
             {tab === "operator" && (
               <p className="text-center text-sm text-gray-500 mt-6">
                 Don&apos;t have an account?{" "}
-                <Link to="/operator/register" className="text-teal-600 font-medium hover:underline">
+                <Link
+                  to="/operator/register"
+                  className="text-teal-600 font-medium hover:underline"
+                >
                   Register here
                 </Link>
               </p>

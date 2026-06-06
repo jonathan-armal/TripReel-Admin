@@ -43,6 +43,8 @@ import OperatorBookings from "./pages/operator/Bookings";
 import OperatorWallet from "./pages/operator/Wallet";
 import OperatorCoupons from "./pages/operator/Coupons";
 import OperatorReviews from "./pages/operator/Reviews";
+import OperatorWishlists from "./pages/operator/Wishlists";
+import OperatorProfile from "./pages/operator/Profile";
 
 // ── Spinner helper ────────────────────────────────────────────────────────────
 function Spinner() {
@@ -254,6 +256,26 @@ function App() {
                 <OperatorRoute requireApproved>
                   <OperatorLayout>
                     <OperatorReviews />
+                  </OperatorLayout>
+                </OperatorRoute>
+              }
+            />
+            <Route
+              path="/operator/wishlists"
+              element={
+                <OperatorRoute requireApproved>
+                  <OperatorLayout>
+                    <OperatorWishlists />
+                  </OperatorLayout>
+                </OperatorRoute>
+              }
+            />
+            <Route
+              path="/operator/profile"
+              element={
+                <OperatorRoute requireApproved>
+                  <OperatorLayout>
+                    <OperatorProfile />
                   </OperatorLayout>
                 </OperatorRoute>
               }

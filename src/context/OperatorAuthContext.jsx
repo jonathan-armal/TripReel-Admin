@@ -41,10 +41,15 @@ export function OperatorAuthProvider({ children }) {
         setOperator(op);
         localStorage.setItem("operatorUser", JSON.stringify(op));
       })
-      .catch(() => {
-        localStorage.removeItem("operatorToken");
-        localStorage.removeItem("operatorUser");
-        setOperator(null);
+      .catch((err) => {
+        // Only clear session on 401 (token expired/invalid)
+        // Keep session on network errors so operator stays logged in offline
+        if (err.response?.status === 401) {
+          localStorage.removeItem("operatorToken");
+          localStorage.removeItem("operatorUser");
+          setOperator(null);
+        }
+        // For network errors, keep the stored operator data
       })
       .finally(() => {
         setOperatorLoading(false);
