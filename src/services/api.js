@@ -179,6 +179,10 @@ export const operatorAuthAPI = {
   login: (data) => operatorApi.post("/operators/auth/login", data),
   getMe: () => operatorApi.get("/operators/auth/me"),
   updateProfile: (data) => operatorApi.patch("/operators/auth/profile", data),
+  uploadPhoto: (formData) =>
+    operatorApi.post("/operators/auth/profile-photo", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
   submitOnboarding: (formData, config = {}) =>
     operatorApi.post("/operators/onboarding", formData, {
       headers: { "Content-Type": "multipart/form-data" },
@@ -194,9 +198,20 @@ export const operatorAuthAPI = {
 export const adminOperatorsAPI = {
   getAll: (params) => api.get("/operators", { params }),
   getById: (id) => api.get(`/operators/${id}`),
+  getStats: (id) => api.get(`/operators/${id}/stats`),
   transitionState: (id, data) => api.patch(`/operators/${id}/state`, data),
   updateDocumentStatus: (id, data) =>
     api.patch(`/operators/${id}/document-status`, data),
+};
+
+// ── Sidebar Counts (real-time badges) ─────────────────────────────────────────
+export const sidebarCountsAPI = {
+  getAdmin: () => api.get("/sidebar-counts/admin"),
+  markAdminSeen: (section) =>
+    api.post("/sidebar-counts/admin/seen", { section }),
+  getOperator: () => operatorApi.get("/sidebar-counts/operator"),
+  markOperatorSeen: (section) =>
+    operatorApi.post("/sidebar-counts/operator/seen", { section }),
 };
 
 // ── Admin Package Review API ──────────────────────────────────────────────────
@@ -292,6 +307,24 @@ export const reportsAPI = {
   update: (id, data) => api.patch(`/reports/${id}`, data),
 };
 
+// Admin — Push Notifications
+export const notificationsAdminAPI = {
+  sendToUser: (userId, title, body) =>
+    api.post("/notifications/send", { userId, title, body }),
+  sendToAll: (title, body, imageUrl) =>
+    api.post("/notifications/send", { title, body, imageUrl }),
+  sendToTopic: (topic, title, body) =>
+    api.post("/notifications/send", { topic, title, body }),
+  getMy: () => api.get("/notifications/admin/all"),
+  markAllRead: () => api.patch("/notifications/mark-read"),
+};
+
+// Operator — Notifications
+export const operatorNotificationsAPI = {
+  getMy: () => operatorApi.get("/notifications/operator/my"),
+  markAllRead: () => operatorApi.patch("/notifications/operator/mark-read"),
+};
+
 // Admin — Suspend Package
 export const adminPackageSuspendAPI = {
   toggle: (id) => api.patch(`/packages/${id}/suspend`),
@@ -336,4 +369,18 @@ export const operatorCouponsAPI = {
 // Operator — wishlist stats (how many users wishlisted their packages)
 export const operatorWishlistAPI = {
   getStats: () => operatorApi.get("/wishlists/operator/stats"),
+};
+
+// Chat APIs
+export const chatAdminAPI = {
+  getConversations: () => api.get("/chat/admin/conversations"),
+  getMessages: (id) => api.get(`/chat/admin/${id}/messages`),
+  sendMessage: (id, data) => api.post(`/chat/admin/${id}/messages`, data),
+};
+
+export const operatorChatAPI = {
+  getConversations: () => operatorApi.get("/chat/operator/conversations"),
+  getMessages: (id) => operatorApi.get(`/chat/operator/${id}/messages`),
+  sendMessage: (id, data) =>
+    operatorApi.post(`/chat/operator/${id}/messages`, data),
 };

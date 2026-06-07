@@ -6,11 +6,8 @@ import {
   XCircle,
   AlertTriangle,
   RefreshCw,
-  Plane,
-  LogOut,
   Upload,
   AlertCircle,
-  ExternalLink,
 } from "lucide-react";
 import { useOperatorAuth } from "../../context/OperatorAuthContext";
 import { operatorAuthAPI } from "../../services/api";
@@ -50,8 +47,7 @@ const DOC_STATUS_UI = {
 };
 
 export default function OperatorStatus() {
-  const { operator, operatorLoading, refreshOperator, logout } =
-    useOperatorAuth();
+  const { operator, operatorLoading, refreshOperator } = useOperatorAuth();
   const navigate = useNavigate();
 
   const [reuploadLoading, setReuploadLoading] = useState("");
@@ -62,17 +58,17 @@ export default function OperatorStatus() {
     refreshOperator();
   }, [refreshOperator]);
 
-  // Poll for status changes every 30s (only while on this page)
+  // Poll for status changes every 30s
   useEffect(() => {
     const id = setInterval(doRefresh, 30000);
     return () => clearInterval(id);
   }, [doRefresh]);
 
-  // Single redirect effect — only runs once loading is done, uses a ref to prevent repeat
+  // Redirect logic
   const redirectedRef = useRef(false);
   useEffect(() => {
-    if (operatorLoading) return; // wait until loaded
-    if (redirectedRef.current) return; // don't redirect twice
+    if (operatorLoading) return;
+    if (redirectedRef.current) return;
     if (!operator) {
       redirectedRef.current = true;
       navigate("/login", { replace: true });
@@ -83,23 +79,25 @@ export default function OperatorStatus() {
       navigate("/operator/onboarding", { replace: true });
       return;
     }
-    if (operator.onboardingState === "APPROVED") {
+    if (
+      operator.onboardingState === "APPROVED" ||
+      operator.onboardingState === "ACTIVE_FULL"
+    ) {
       redirectedRef.current = true;
       navigate("/operator/dashboard", { replace: true });
       return;
     }
-    // PENDING_APPROVAL / REJECTED / SUSPENDED — stay on this page
   }, [operator?.onboardingState, operatorLoading, navigate]);
 
   if (
     operatorLoading ||
     !operator ||
     operator.onboardingState === "DRAFT" ||
-    operator.onboardingState === "APPROVED"
+    operator.onboardingState === "APPROVED" ||
+    operator.onboardingState === "ACTIVE_FULL"
   ) {
-    // Still loading or waiting for redirect — show spinner without re-rendering
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="flex items-center justify-center py-16">
         <div className="w-10 h-10 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -107,12 +105,6 @@ export default function OperatorStatus() {
 
   const state = operator.onboardingState;
   const documentStatus = operator.documentStatus || {};
-
-  // Docs that need reupload or are rejected
-  const actionableDocs = Object.keys(DOCUMENT_LABELS).filter((key) => {
-    const s = documentStatus[key]?.status;
-    return s === "REUPLOAD_REQUIRED" || s === "REJECTED";
-  });
 
   const handleReupload = async (key, file) => {
     if (!file) return;
@@ -152,6 +144,11 @@ export default function OperatorStatus() {
     }
   };
 
+  // Get suspension reason from transition history
+  const suspensionNote = (operator.transitionHistory || [])
+    .filter((h) => h.toState === "SUSPENDED")
+    .pop()?.note;
+
   const STATUS_UI = {
     PENDING_APPROVAL: {
       icon: <Clock className="w-14 h-14 text-amber-400" />,
@@ -175,208 +172,193 @@ export default function OperatorStatus() {
     SUSPENDED: {
       icon: <AlertTriangle className="w-14 h-14 text-orange-400" />,
       title: "Account Suspended",
-      subtitle: "Your account has been suspended",
+      subtitle: "Your account has been suspended by admin",
       msgColor: "bg-orange-50 border-orange-200 text-orange-700",
       badge: "bg-orange-100 text-orange-700 border-orange-200",
-      message: "Please contact support to resolve this issue.",
+      message:
+        suspensionNote ||
+        "Your account has been suspended. Please contact admin for more details.",
     },
   };
 
   const ui = STATUS_UI[state] || STATUS_UI.PENDING_APPROVAL;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-teal-500 rounded-lg flex items-center justify-center">
-            <Plane className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h1 className="font-bold text-gray-900 leading-tight">TripReel</h1>
-            <p className="text-xs text-gray-400">Operator Portal</p>
-          </div>
+    <div className="max-w-lg mx-auto space-y-5">
+      {/* Status card */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
+        <div className="flex justify-center mb-4">{ui.icon}</div>
+        <span
+          className={`inline-flex items-center px-4 py-1.5 rounded-full text-sm font-medium border ${ui.badge}`}
+        >
+          {ui.title}
+        </span>
+        <h2 className="text-xl font-bold text-gray-900 mt-3 mb-2">
+          {ui.subtitle}
+        </h2>
+        <div className={`p-4 rounded-xl border mt-4 ${ui.msgColor}`}>
+          <p className="text-sm">{ui.message}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={doRefresh}
-            className="p-2 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
-            title="Refresh"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => {
-              logout();
-              navigate("/login", { replace: true });
-            }}
-            className="flex items-center gap-2 text-sm text-gray-500 hover:text-red-500 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-50"
-          >
-            <LogOut className="w-4 h-4" />
-            <span className="hidden sm:inline">Sign out</span>
-          </button>
-        </div>
-      </header>
 
-      <div className="flex-1 px-4 py-8">
-        <div className="max-w-lg mx-auto space-y-5">
-          {/* Status card */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
-            <div className="flex justify-center mb-4">{ui.icon}</div>
-            <span
-              className={`inline-flex items-center px-4 py-1.5 rounded-full text-sm font-medium border ${ui.badge}`}
-            >
-              {ui.title}
+        {/* Operator info */}
+        <div className="mt-6 pt-5 border-t border-gray-100 text-left space-y-2">
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Name</span>
+            <span className="font-medium text-gray-800">
+              {operator.contactName}
             </span>
-            <h2 className="text-xl font-bold text-gray-900 mt-3 mb-2">
-              {ui.subtitle}
-            </h2>
-            <div className={`p-4 rounded-xl border mt-4 ${ui.msgColor}`}>
-              <p className="text-sm">{ui.message}</p>
-            </div>
-
-            {/* Operator info */}
-            <div className="mt-6 pt-5 border-t border-gray-100 text-left space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Name</span>
-                <span className="font-medium text-gray-800">
-                  {operator.contactName}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Email</span>
-                <span className="font-medium text-gray-800">
-                  {operator.email}
-                </span>
-              </div>
-              {operator.businessName && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Business</span>
-                  <span className="font-medium text-gray-800">
-                    {operator.businessName}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {state === "PENDING_APPROVAL" && (
-              <p className="mt-4 text-xs text-gray-400">
-                Auto-refreshes every 30 seconds.
-              </p>
-            )}
-            {state === "REJECTED" && (
-              <div className="mt-5">
-                <a
-                  href="mailto:support@tripreel.com"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-gray-800 hover:bg-gray-900 text-white text-sm font-medium rounded-xl transition-colors"
-                >
-                  Contact Support
-                </a>
-              </div>
-            )}
           </div>
-
-          {/* Document status + reupload */}
-          {Object.keys(documentStatus).length > 0 && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <h3 className="text-base font-semibold text-gray-800 mb-1">
-                Document Status
-              </h3>
-              <p className="text-sm text-gray-500 mb-4">
-                Check the status of each document. Re-upload if requested.
-              </p>
-
-              {/* Reupload success */}
-              {reuploadSuccess && (
-                <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl flex items-center gap-2 text-sm text-green-700">
-                  <CheckCircle className="w-4 h-4 flex-shrink-0" />{" "}
-                  {reuploadSuccess}
-                </div>
-              )}
-
-              <div className="space-y-3">
-                {Object.entries(DOCUMENT_LABELS).map(([key, label]) => {
-                  const docSt = documentStatus[key];
-                  if (!docSt) return null;
-                  const status = docSt.status || "PENDING";
-                  const remark = docSt.remark;
-                  const stUI = DOC_STATUS_UI[status] || DOC_STATUS_UI.PENDING;
-                  const needsAction =
-                    status === "REUPLOAD_REQUIRED" || status === "REJECTED";
-                  const isUploading = reuploadLoading === key;
-                  const err = reuploadErrors[key];
-
-                  return (
-                    <div
-                      key={key}
-                      className={`rounded-xl border p-4 ${needsAction ? "border-orange-200 bg-orange-50" : "border-gray-100 bg-gray-50"}`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-gray-800">
-                            {label}
-                          </p>
-                          <span
-                            className={`inline-flex items-center mt-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${stUI.color}`}
-                          >
-                            {stUI.label}
-                          </span>
-                          {remark && (
-                            <p className="mt-2 text-xs text-gray-600 bg-white rounded-lg px-3 py-2 border border-gray-100">
-                              <span className="font-medium text-gray-700">
-                                Admin note:{" "}
-                              </span>
-                              {remark}
-                            </p>
-                          )}
-                        </div>
-                        {status === "APPROVED" && (
-                          <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                        )}
-                      </div>
-
-                      {needsAction && (
-                        <div className="mt-3">
-                          <label
-                            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border cursor-pointer transition-colors text-sm font-medium ${
-                              isUploading
-                                ? "border-teal-300 bg-teal-50 text-teal-600"
-                                : "border-gray-200 bg-white text-gray-700 hover:border-teal-300"
-                            }`}
-                          >
-                            {isUploading ? (
-                              <span className="w-4 h-4 border-2 border-teal-400/40 border-t-teal-500 rounded-full animate-spin" />
-                            ) : (
-                              <Upload className="w-4 h-4 text-teal-500" />
-                            )}
-                            {isUploading ? "Uploading…" : "Upload New File"}
-                            <input
-                              type="file"
-                              accept=".pdf,.jpg,.jpeg,.png"
-                              disabled={!!reuploadLoading}
-                              className="hidden"
-                              onChange={(e) => {
-                                const f = e.target.files?.[0];
-                                e.target.value = "";
-                                handleReupload(key, f);
-                              }}
-                            />
-                          </label>
-                          {err && (
-                            <p className="mt-1.5 text-xs text-red-500 flex items-center gap-1">
-                              <AlertCircle className="w-3 h-3" /> {err}
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Email</span>
+            <span className="font-medium text-gray-800">{operator.email}</span>
+          </div>
+          {operator.businessName && (
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">Business</span>
+              <span className="font-medium text-gray-800">
+                {operator.businessName}
+              </span>
             </div>
           )}
         </div>
+
+        {state === "PENDING_APPROVAL" && (
+          <p className="mt-4 text-xs text-gray-400">
+            Auto-refreshes every 30 seconds.
+          </p>
+        )}
+
+        {state === "REJECTED" && (
+          <div className="mt-5">
+            <a
+              href="mailto:support@tripreel.com"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-gray-800 hover:bg-gray-900 text-white text-sm font-medium rounded-xl transition-colors"
+            >
+              Contact Support
+            </a>
+          </div>
+        )}
+
+        {state === "SUSPENDED" && (
+          <div className="mt-5 space-y-3">
+            <div className="p-4 bg-orange-50 border border-orange-200 rounded-xl text-left">
+              <p className="text-xs font-semibold text-orange-700 uppercase tracking-wide mb-1">
+                What this means
+              </p>
+              <ul className="text-sm text-orange-700 space-y-1">
+                <li>• Your packages have been temporarily hidden from users</li>
+                <li>• Existing bookings are not affected</li>
+                <li>• You cannot create new packages or batches</li>
+              </ul>
+            </div>
+            <a
+              href="mailto:admin@tripreel.com"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium rounded-xl transition-colors"
+            >
+              Contact Admin
+            </a>
+          </div>
+        )}
       </div>
+
+      {/* Document status + reupload (for PENDING_APPROVAL and REJECTED) */}
+      {state !== "SUSPENDED" && Object.keys(documentStatus).length > 0 && (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+          <h3 className="text-base font-semibold text-gray-800 mb-1">
+            Document Status
+          </h3>
+          <p className="text-sm text-gray-500 mb-4">
+            Check the status of each document. Re-upload if requested.
+          </p>
+
+          {reuploadSuccess && (
+            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl flex items-center gap-2 text-sm text-green-700">
+              <CheckCircle className="w-4 h-4 flex-shrink-0" />{" "}
+              {reuploadSuccess}
+            </div>
+          )}
+
+          <div className="space-y-3">
+            {Object.entries(DOCUMENT_LABELS).map(([key, label]) => {
+              const docSt = documentStatus[key];
+              if (!docSt) return null;
+              const status = docSt.status || "PENDING";
+              const remark = docSt.remark;
+              const stUI = DOC_STATUS_UI[status] || DOC_STATUS_UI.PENDING;
+              const needsAction =
+                status === "REUPLOAD_REQUIRED" || status === "REJECTED";
+              const isUploading = reuploadLoading === key;
+              const err = reuploadErrors[key];
+
+              return (
+                <div
+                  key={key}
+                  className={`rounded-xl border p-4 ${needsAction ? "border-orange-200 bg-orange-50" : "border-gray-100 bg-gray-50"}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-gray-800">
+                        {label}
+                      </p>
+                      <span
+                        className={`inline-flex items-center mt-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${stUI.color}`}
+                      >
+                        {stUI.label}
+                      </span>
+                      {remark && (
+                        <p className="mt-2 text-xs text-gray-600 bg-white rounded-lg px-3 py-2 border border-gray-100">
+                          <span className="font-medium text-gray-700">
+                            Admin note:{" "}
+                          </span>
+                          {remark}
+                        </p>
+                      )}
+                    </div>
+                    {status === "APPROVED" && (
+                      <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                    )}
+                  </div>
+
+                  {needsAction && (
+                    <div className="mt-3">
+                      <label
+                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border cursor-pointer transition-colors text-sm font-medium ${
+                          isUploading
+                            ? "border-teal-300 bg-teal-50 text-teal-600"
+                            : "border-gray-200 bg-white text-gray-700 hover:border-teal-300"
+                        }`}
+                      >
+                        {isUploading ? (
+                          <span className="w-4 h-4 border-2 border-teal-400/40 border-t-teal-500 rounded-full animate-spin" />
+                        ) : (
+                          <Upload className="w-4 h-4 text-teal-500" />
+                        )}
+                        {isUploading ? "Uploading…" : "Upload New File"}
+                        <input
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          disabled={!!reuploadLoading}
+                          className="hidden"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            e.target.value = "";
+                            handleReupload(key, f);
+                          }}
+                        />
+                      </label>
+                      {err && (
+                        <p className="mt-1.5 text-xs text-red-500 flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3" /> {err}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

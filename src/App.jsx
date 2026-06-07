@@ -1,5 +1,11 @@
-import { useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+} from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import {
   OperatorAuthProvider,
@@ -30,6 +36,8 @@ import OperatorWallets from "./pages/OperatorWallets";
 import RevenueDashboard from "./pages/RevenueDashboard";
 import CancellationSlabs from "./pages/CancellationSlabs";
 import Reports from "./pages/Reports";
+import ExperiencesNearYou from "./pages/ExperiencesNearYou";
+import PopularDestinations from "./pages/PopularDestinations";
 
 // ── Operator pages ────────────────────────────────────────────────────────────
 import OperatorRegister from "./pages/operator/Register";
@@ -45,6 +53,12 @@ import OperatorCoupons from "./pages/operator/Coupons";
 import OperatorReviews from "./pages/operator/Reviews";
 import OperatorWishlists from "./pages/operator/Wishlists";
 import OperatorProfile from "./pages/operator/Profile";
+import OperatorMessages from "./pages/operator/Messages";
+import OperatorNotifications from "./pages/operator/Notifications";
+import OperatorAnalytics from "./pages/operator/Analytics";
+import AdminNotifications from "./pages/Notifications";
+import Broadcast from "./pages/Broadcast";
+import AdminLogin from "./pages/AdminLogin";
 
 // ── Spinner helper ────────────────────────────────────────────────────────────
 function Spinner() {
@@ -80,7 +94,11 @@ function OperatorRoute({ children, requireApproved = false }) {
   const { operator, operatorLoading } = useOperatorAuth();
   if (operatorLoading) return <Spinner />;
   if (!operator) return <Navigate to="/login" replace />;
-  if (requireApproved && operator.onboardingState !== "APPROVED") {
+  if (
+    requireApproved &&
+    operator.onboardingState !== "APPROVED" &&
+    operator.onboardingState !== "ACTIVE_FULL"
+  ) {
     return <Navigate to="/operator/status" replace />;
   }
   return children;
@@ -105,6 +123,23 @@ function AdminLayout({ children }) {
 // ── Operator layout: dark sidebar (teal accent) + mobile hamburger ────────────
 function OperatorLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [bellOpen, setBellOpen] = useState(false);
+  const [bellNotifs, setBellNotifs] = useState([]);
+  const [bellUnread, setBellUnread] = useState(0);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    import("./services/api").then(({ operatorNotificationsAPI }) => {
+      operatorNotificationsAPI
+        .getMy()
+        .then((res) => {
+          setBellNotifs((res.data?.notifications || []).slice(0, 5));
+          setBellUnread(res.data?.unreadCount || 0);
+        })
+        .catch(() => {});
+    });
+  }, []);
+
   return (
     <div className="flex h-screen bg-gray-50">
       <OperatorSidebar
@@ -112,27 +147,107 @@ function OperatorLayout({ children }) {
         setSidebarOpen={setSidebarOpen}
       />
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Mobile top bar */}
-        <div className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-100 flex-shrink-0">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <svg
-              className="w-5 h-5 text-gray-600"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+        <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-100 flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 6h16M4 12h16M4 18h16"
-              />
-            </svg>
-          </button>
-          <span className="font-semibold text-gray-800">TripReel Operator</span>
+              <svg
+                className="w-5 h-5 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
+              </svg>
+            </button>
+            <span className="font-semibold text-gray-800">
+              TripReel Operator
+            </span>
+          </div>
+          <div className="relative">
+            <button
+              onClick={() => setBellOpen(!bellOpen)}
+              className="p-2 hover:bg-gray-100 rounded-lg relative"
+            >
+              <svg
+                className="w-5 h-5 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                />
+              </svg>
+              {bellUnread > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {bellUnread > 9 ? "9+" : bellUnread}
+                </span>
+              )}
+            </button>
+            {bellOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setBellOpen(false)}
+                />
+                <div className="absolute right-0 top-12 z-50 w-80 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden">
+                  <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                    <p className="text-sm font-semibold text-gray-800">
+                      Notifications
+                    </p>
+                    {bellUnread > 0 && (
+                      <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-medium">
+                        {bellUnread} new
+                      </span>
+                    )}
+                  </div>
+                  <div className="max-h-72 overflow-y-auto">
+                    {bellNotifs.length === 0 ? (
+                      <p className="text-sm text-gray-400 text-center py-6">
+                        No notifications
+                      </p>
+                    ) : (
+                      bellNotifs.map((n) => (
+                        <div
+                          key={n._id}
+                          className={`px-4 py-3 border-b border-gray-50 last:border-0 ${!n.read ? "bg-teal-50/40" : ""}`}
+                        >
+                          <p
+                            className={`text-sm ${!n.read ? "font-semibold" : "font-medium"} text-gray-800 truncate`}
+                          >
+                            {n.title}
+                          </p>
+                          <p className="text-xs text-gray-500 truncate mt-0.5">
+                            {n.body}
+                          </p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <button
+                    onClick={() => {
+                      setBellOpen(false);
+                      navigate("/operator/notifications");
+                    }}
+                    className="w-full px-4 py-3 text-center text-sm font-medium text-teal-600 hover:bg-teal-50 border-t border-gray-100"
+                  >
+                    View All Notifications
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
           {children}
@@ -151,6 +266,7 @@ function App() {
           <Routes>
             {/* ── Unified login (public) ── */}
             <Route path="/login" element={<Login />} />
+            <Route path="/admin-login" element={<AdminLogin />} />
 
             {/* ── Operator login redirects to unified login ── */}
             <Route
@@ -174,7 +290,9 @@ function App() {
               path="/operator/status"
               element={
                 <OperatorRoute>
-                  <OperatorStatus />
+                  <OperatorLayout>
+                    <OperatorStatus />
+                  </OperatorLayout>
                 </OperatorRoute>
               }
             />
@@ -280,6 +398,36 @@ function App() {
                 </OperatorRoute>
               }
             />
+            <Route
+              path="/operator/messages"
+              element={
+                <OperatorRoute requireApproved>
+                  <OperatorLayout>
+                    <OperatorMessages />
+                  </OperatorLayout>
+                </OperatorRoute>
+              }
+            />
+            <Route
+              path="/operator/notifications"
+              element={
+                <OperatorRoute>
+                  <OperatorLayout>
+                    <OperatorNotifications />
+                  </OperatorLayout>
+                </OperatorRoute>
+              }
+            />
+            <Route
+              path="/operator/analytics"
+              element={
+                <OperatorRoute requireApproved>
+                  <OperatorLayout>
+                    <OperatorAnalytics />
+                  </OperatorLayout>
+                </OperatorRoute>
+              }
+            />
 
             {/* ── Admin pages (with AdminSidebar + Header) ── */}
             <Route
@@ -319,6 +467,24 @@ function App() {
                         element={<CancellationSlabs />}
                       />
                       <Route path="/reports" element={<Reports />} />
+                      <Route
+                        path="/experiences"
+                        element={<ExperiencesNearYou />}
+                      />
+                      <Route
+                        path="/popular-destinations"
+                        element={<PopularDestinations />}
+                      />
+                      <Route
+                        path="/notifications"
+                        element={<AdminNotifications />}
+                      />
+                      <Route path="/broadcast" element={<Broadcast />} />
+                      <Route
+                        path="/notifications"
+                        element={<AdminNotifications />}
+                      />
+                      <Route path="/broadcast" element={<Broadcast />} />
                       <Route
                         path="/operator-wallets"
                         element={<OperatorWallets />}

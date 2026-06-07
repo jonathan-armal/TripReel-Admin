@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   User,
   Mail,
@@ -11,15 +11,31 @@ import {
   Save,
   CheckCircle,
   X,
+  Camera,
 } from "lucide-react";
 import { useOperatorAuth } from "../../context/OperatorAuthContext";
 import { operatorAuthAPI } from "../../services/api";
+
+const isLocal =
+  window.location.hostname === "localhost" ||
+  window.location.hostname === "127.0.0.1";
+const SERVER = isLocal
+  ? "http://localhost:5001"
+  : "https://tripreel-backend.onrender.com";
+
+const resolvePhoto = (url) => {
+  if (!url) return null;
+  if (url.startsWith("http")) return url;
+  return `${SERVER}${url.startsWith("/") ? "" : "/"}${url}`;
+};
 
 export default function OperatorProfile() {
   const { operator, refreshOperator } = useOperatorAuth();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const photoInputRef = useRef(null);
   const [form, setForm] = useState({
     contactName: operator?.contactName || "",
     phone: operator?.phone || "",
@@ -57,6 +73,24 @@ export default function OperatorProfile() {
       alert(err.response?.data?.message || "Failed to update profile");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("photo", file);
+      await operatorAuthAPI.uploadPhoto(fd);
+      await refreshOperator();
+      setSuccess("Photo updated");
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (err) {
+      alert(err.response?.data?.message || "Photo upload failed");
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -174,8 +208,36 @@ export default function OperatorProfile() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-14 h-14 bg-gradient-to-br from-teal-400 to-teal-600 rounded-2xl flex items-center justify-center text-white text-xl font-bold shadow-sm">
-            {(operator.contactName || "O").charAt(0).toUpperCase()}
+          <div className="relative group">
+            {resolvePhoto(operator.profilePhoto) ? (
+              <img
+                src={resolvePhoto(operator.profilePhoto)}
+                alt=""
+                className="w-14 h-14 rounded-2xl object-cover shadow-sm"
+              />
+            ) : (
+              <div className="w-14 h-14 bg-gradient-to-br from-teal-400 to-teal-600 rounded-2xl flex items-center justify-center text-white text-xl font-bold shadow-sm">
+                {(operator.contactName || "O").charAt(0).toUpperCase()}
+              </div>
+            )}
+            <button
+              onClick={() => photoInputRef.current?.click()}
+              disabled={uploading}
+              className="absolute -bottom-1 -right-1 w-7 h-7 bg-teal-500 text-white rounded-full flex items-center justify-center border-2 border-white shadow-sm hover:bg-teal-600 transition-colors"
+            >
+              {uploading ? (
+                <span className="w-3 h-3 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+              ) : (
+                <Camera className="w-3.5 h-3.5" />
+              )}
+            </button>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handlePhotoUpload}
+            />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
