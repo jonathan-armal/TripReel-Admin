@@ -152,6 +152,7 @@ function Sidebar({ sidebarOpen, setSidebarOpen }) {
         { id: "platform-settings", label: "Platform Settings", icon: Settings },
         { id: "broadcast", label: "Broadcast", icon: Megaphone },
         { id: "campaigns", label: "Campaigns", icon: Megaphone },
+        { id: "app-screens", label: "App Screens", icon: Megaphone },
         {
           id: "notifications",
           label: "Notifications",

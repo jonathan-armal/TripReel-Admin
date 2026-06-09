@@ -59,6 +59,7 @@ import OperatorAnalytics from "./pages/operator/Analytics";
 import AdminNotifications from "./pages/Notifications";
 import Broadcast from "./pages/Broadcast";
 import Campaigns from "./pages/Campaigns";
+import AppScreens from "./pages/AppScreens";
 import AdminLogin from "./pages/AdminLogin";
 
 // ── Spinner helper ────────────────────────────────────────────────────────────
@@ -487,6 +488,7 @@ function App() {
                       />
                       <Route path="/broadcast" element={<Broadcast />} />
                       <Route path="/campaigns" element={<Campaigns />} />
+                      <Route path="/app-screens" element={<AppScreens />} />
                       <Route
                         path="/operator-wallets"
                         element={<OperatorWallets />}

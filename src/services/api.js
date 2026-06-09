@@ -224,6 +224,14 @@ export const campaignsAPI = {
   trackClick: (id) => api.post(`/campaigns/click/${id}`),
 };
 
+// ── App Screens (splash + slider) ─────────────────────────────────────────────
+export const appScreensAPI = {
+  get: () => api.get("/app-screens"),
+  updateSplash: (splashImageUrl) =>
+    api.put("/app-screens/splash", { splashImageUrl }),
+  updateSlides: (slides) => api.put("/app-screens/slides", { slides }),
+};
+
 // ── Admin Package Review API ──────────────────────────────────────────────────
 export const adminPackagesAPI = {
   getAll: (params) => api.get("/packages/admin/all", { params }),
