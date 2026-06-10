@@ -266,6 +266,9 @@ function App() {
       <AuthProvider>
         <OperatorAuthProvider>
           <Routes>
+            {/* ── Default: go to operator login ── */}
+            <Route path="/" element={<Navigate to="/login" replace />} />
+
             {/* ── Unified login (public) ── */}
             <Route path="/login" element={<Login />} />
             <Route path="/admin-login" element={<AdminLogin />} />

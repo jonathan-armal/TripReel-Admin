@@ -54,10 +54,13 @@ const emptyForm = {
   badge: "Popular",
   duration: "",
   highlights: [""],
-  itinerary: [{ day: 1, title: "", points: [""] }],
+  itinerary: [
+    { day: 1, title: "", points: [""], pickupPoint: "", isOutsideCity: false },
+  ],
   inclusions: [""],
   exclusions: [""],
   addons: [{ name: "", price: "", details: [""] }],
+  outsideCityCharge: "",
   videos: [""],
   hotelDetails: {
     hotelName: "",
@@ -151,6 +154,7 @@ function PackageFormModal({ pkg, readOnly = false, onClose, onSaved }) {
       durationDays: pkg.durationDays ?? "",
       durationNights: pkg.durationNights ?? "",
       aboutThisTrip: pkg.aboutThisTrip ?? pkg.fullDescription ?? "",
+      outsideCityCharge: pkg.outsideCityCharge ?? "",
       videos: pkg.videos?.length ? pkg.videos : [""],
       highlights: pkg.highlights?.length ? pkg.highlights : [""],
       inclusions: pkg.inclusions?.length ? pkg.inclusions : [""],
@@ -159,8 +163,20 @@ function PackageFormModal({ pkg, readOnly = false, onClose, onSaved }) {
         ? pkg.addons
         : [{ name: "", price: "", details: [""] }],
       itinerary: pkg.itinerary?.length
-        ? pkg.itinerary
-        : [{ day: 1, title: "", points: [""] }],
+        ? pkg.itinerary.map((d) => ({
+            ...d,
+            pickupPoint: d.pickupPoint || "",
+            isOutsideCity: d.isOutsideCity || false,
+          }))
+        : [
+            {
+              day: 1,
+              title: "",
+              points: [""],
+              pickupPoint: "",
+              isOutsideCity: false,
+            },
+          ],
       hotelDetails: { ...emptyForm.hotelDetails, ...(pkg.hotelDetails || {}) },
       transportDetails: {
         ...emptyForm.transportDetails,
@@ -207,6 +223,8 @@ function PackageFormModal({ pkg, readOnly = false, onClose, onSaved }) {
               day: current.length + i + 1,
               title: "",
               points: [""],
+              pickupPoint: "",
+              isOutsideCity: false,
             }),
           );
           updated.itinerary = [...current, ...extra];
@@ -341,6 +359,10 @@ function PackageFormModal({ pkg, readOnly = false, onClose, onSaved }) {
       ];
       scalars.forEach((k) => fd.append(k, form[k] ?? ""));
       fd.append("duration", resolvedDuration);
+      fd.append(
+        "outsideCityCharge",
+        String(Number(form.outsideCityCharge) || 0),
+      );
 
       fd.append("destination", resolvedLocation);
       fd.append("location", resolvedLocation);
@@ -361,6 +383,8 @@ function PackageFormModal({ pkg, readOnly = false, onClose, onSaved }) {
             day: Number(d.day || idx + 1),
             title: String(d.title || "").trim(),
             points: cleanStrList(d.points || []),
+            pickupPoint: String(d.pickupPoint || "").trim(),
+            isOutsideCity: Boolean(d.isOutsideCity),
           }))
           .filter((d) => d.title),
         addons: (Array.isArray(form.addons) ? form.addons : [])
@@ -472,7 +496,13 @@ function PackageFormModal({ pkg, readOnly = false, onClose, onSaved }) {
   const addDay = () =>
     set("itinerary", [
       ...form.itinerary,
-      { day: form.itinerary.length + 1, title: "", points: [""] },
+      {
+        day: form.itinerary.length + 1,
+        title: "",
+        points: [""],
+        pickupPoint: "",
+        isOutsideCity: false,
+      },
     ]);
   const removeDay = (i) =>
     set(
@@ -726,6 +756,25 @@ function PackageFormModal({ pkg, readOnly = false, onClose, onSaved }) {
     if (step === 2) {
       return (
         <div className="space-y-4">
+          {/* Outside City Charge — applies to all outside-city addon days */}
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+            <label className="block text-sm font-semibold text-amber-800 mb-1.5">
+              Outside City Surcharge (₹ per person per day)
+            </label>
+            <p className="text-xs text-amber-700 mb-2">
+              Extra charge when photographer/reel maker travels outside city.
+              This goes to your earnings.
+            </p>
+            <input
+              type="number"
+              min="0"
+              value={form.outsideCityCharge}
+              onChange={(e) => set("outsideCityCharge", e.target.value)}
+              placeholder="e.g. 500"
+              className={inp}
+            />
+          </div>
+
           {form.itinerary.map((day, di) => (
             <div key={di} className="bg-gray-50 rounded-xl p-4 space-y-3">
               <div className="flex items-center gap-3">
@@ -749,6 +798,38 @@ function PackageFormModal({ pkg, readOnly = false, onClose, onSaved }) {
                   </button>
                 )}
               </div>
+
+              {/* Pickup Point + Outside City Toggle */}
+              <div className="pl-11 space-y-2">
+                <div className="flex gap-2 items-center">
+                  <input
+                    value={day.pickupPoint || ""}
+                    onChange={(e) =>
+                      updateItinerary(di, "pickupPoint", e.target.value)
+                    }
+                    placeholder="Pickup Point (e.g. Hotel Lobby, Bus Stand)"
+                    className={inp + " flex-1"}
+                  />
+                  <label
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs cursor-pointer whitespace-nowrap transition-colors ${
+                      day.isOutsideCity
+                        ? "border-amber-400 bg-amber-50 text-amber-700"
+                        : "border-gray-200 hover:border-amber-300 text-gray-600"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={Boolean(day.isOutsideCity)}
+                      onChange={(e) =>
+                        updateItinerary(di, "isOutsideCity", e.target.checked)
+                      }
+                      className="accent-amber-600"
+                    />
+                    Outside City
+                  </label>
+                </div>
+              </div>
+
               <div className="pl-11 space-y-2">
                 {day.points.map((pt, pi) => (
                   <div key={pi} className="flex gap-2">
