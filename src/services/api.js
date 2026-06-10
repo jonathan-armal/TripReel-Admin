@@ -4,7 +4,8 @@ import axios from "axios";
 const isLocal =
   window.location.hostname === "localhost" ||
   window.location.hostname === "127.0.0.1";
-const BASE_URL = isLocal ? "/api" : "https://tripreel-backend.onrender.com/api";
+// const BASE_URL = isLocal ? "/api" : "https://api.tripreel.in/api";
+const BASE_URL = isLocal ? "/api" : "https://api.tripreel.in/api";
 
 const api = axios.create({
   baseURL: BASE_URL,

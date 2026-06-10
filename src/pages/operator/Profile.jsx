@@ -21,7 +21,7 @@ const isLocal =
   window.location.hostname === "127.0.0.1";
 const SERVER = isLocal
   ? "http://localhost:5001"
-  : "https://tripreel-backend.onrender.com";
+  : "https://api.tripreel.in";
 
 const resolvePhoto = (url) => {
   if (!url) return null;

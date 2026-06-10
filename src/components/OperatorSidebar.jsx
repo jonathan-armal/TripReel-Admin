@@ -385,7 +385,7 @@ export default function OperatorSidebar({ sidebarOpen, setSidebarOpen }) {
                     ? operator.profilePhoto
                     : (window.location.hostname === "localhost"
                         ? "http://localhost:5001"
-                        : "https://tripreel-backend.onrender.com") +
+                        : "https://api.tripreel.in") +
                       operator.profilePhoto
                 }
                 alt=""

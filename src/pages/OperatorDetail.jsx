@@ -70,7 +70,7 @@ const DOC_STATUS_COLORS = {
 const BACKEND_URL =
   window.location.hostname === "localhost"
     ? "http://localhost:5001"
-    : "https://tripreel-backend.onrender.com";
+    : "https://api.tripreel.in";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function StateBadge({ state }) {

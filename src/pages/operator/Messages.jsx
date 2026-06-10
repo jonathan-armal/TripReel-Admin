@@ -16,7 +16,7 @@ const isLocal =
   window.location.hostname === "127.0.0.1";
 const SOCKET_URL = isLocal
   ? "http://localhost:5001"
-  : "https://tripreel-backend.onrender.com";
+  : "https://api.tripreel.in";
 
 function fmtTime(d) {
   if (!d) return "";

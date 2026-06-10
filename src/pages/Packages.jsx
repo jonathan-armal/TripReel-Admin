@@ -286,6 +286,48 @@ function ReviewModal({ pkg, onClose, onReviewed }) {
             </div>
           )}
 
+          {/* Addons */}
+          {pkg.addons?.filter((a) => a.name).length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                Add-Ons
+              </p>
+              <div className="space-y-2">
+                {pkg.addons
+                  .filter((a) => a.name)
+                  .map((addon, i) => (
+                    <div
+                      key={i}
+                      className="bg-gray-50 rounded-xl p-3 flex items-center gap-3"
+                    >
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-gray-800">
+                          {addon.name}
+                        </p>
+                        {addon.details?.filter(Boolean).length > 0 && (
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {addon.details.filter(Boolean).join(" • ")}
+                          </p>
+                        )}
+                      </div>
+                      <span className="text-sm font-bold text-teal-600">
+                        ₹{Number(addon.price || 0).toLocaleString()}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+              {pkg.outsideCityCharge > 0 && (
+                <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-lg">
+                  <p className="text-xs text-amber-700 font-medium">
+                    ⚡ Outside City Surcharge: ₹
+                    {Number(pkg.outsideCityCharge).toLocaleString()} extra per
+                    person per outside-city day
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Itinerary */}
           {pkg.itinerary?.filter((d) => d.title).length > 0 && (
             <div>
@@ -297,9 +339,21 @@ function ReviewModal({ pkg, onClose, onReviewed }) {
                   .filter((d) => d.title)
                   .map((day, i) => (
                     <div key={i} className="bg-gray-50 rounded-xl p-3">
-                      <p className="text-sm font-semibold text-gray-800">
-                        Day {day.day}: {day.title}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold text-gray-800 flex-1">
+                          Day {day.day}: {day.title}
+                        </p>
+                        {day.isOutsideCity && (
+                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                            Outside City
+                          </span>
+                        )}
+                      </div>
+                      {day.pickupPoint && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          📍 Pickup: {day.pickupPoint}
+                        </p>
+                      )}
                       {day.points?.filter(Boolean).length > 0 && (
                         <ul className="mt-1.5 space-y-0.5">
                           {day.points.filter(Boolean).map((pt, pi) => (
@@ -316,6 +370,15 @@ function ReviewModal({ pkg, onClose, onReviewed }) {
                     </div>
                   ))}
               </div>
+              {pkg.outsideCityCharge > 0 && (
+                <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-lg">
+                  <p className="text-xs text-amber-700 font-medium">
+                    Outside City Surcharge: ₹
+                    {Number(pkg.outsideCityCharge).toLocaleString()} / person /
+                    day
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
